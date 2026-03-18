@@ -1,0 +1,56 @@
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# ── Virtual environments ──────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+
+# ── uv ────────────────────────────────────────────────────────────────────────
+# Keep uv.lock committed for reproducible installs
+# .python-version is safe to commit
+
+# ── Seekr runtime data ────────────────────────────────────────────────────────
+# The entire data directory is generated at runtime — never commit it.
+# It contains the FAISS index, chunk metadata, downloaded videos/audio/PDFs,
+# and processed-URL hashes — all potentially large and user-specific.
+data/
+
+# ── Seekr config — contains API keys ─────────────────────────────────────────
+# Copy config.example.yaml → config.yaml and fill in your keys.
+# Never commit the real config.yaml.
+config.yaml
+
+# ── Environment files ─────────────────────────────────────────────────────────
+.env
+.env.*
+*.env
+
+# ── IDE / editor ──────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ── Testing / tooling caches ──────────────────────────────────────────────────
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# ── Claude Code internal ──────────────────────────────────────────────────────
+.claude/

@@ -1,0 +1,2220 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Seekr — Search Inside Videos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Prevent theme flash -->
+  <script>
+    (function(){
+      const s = localStorage.getItem('seekr-theme');
+      const sys = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', s || sys);
+    })();
+  </script>
+  <style>
+    /* ── Theme tokens ──────────────────────────────────────────────────────── */
+    :root {
+      --bg:          #fafaf8;
+      --surface:     #ffffff;
+      --surface2:    #f4f0eb;
+      --border:      #e6dfd6;
+      --text:        #303030;
+      --muted:       #787068;
+      --accent:      #f14902;
+      --accent-h:    #d64000;
+      --accent-tint: rgba(241,73,2,.08);
+      --accent-glow: rgba(241,73,2,.28);
+      --shadow-sm:   0 1px 4px rgba(0,0,0,.06);
+      --shadow-md:   0 4px 18px rgba(0,0,0,.09);
+      --shadow-lg:   0 8px 36px rgba(0,0,0,.11);
+      --r-xs: 8px; --r-sm: 12px; --r: 16px; --r-lg: 20px; --r-xl: 28px;
+      --dur: .2s;
+    }
+    [data-theme="dark"] {
+      --bg:          #111010;
+      --surface:     #1a1918;
+      --surface2:    #232120;
+      --border:      #2d2b29;
+      --text:        #f0ebe3;
+      --muted:       #8a8278;
+      --accent:      #f14902;
+      --accent-h:    #ff5c1f;
+      --accent-tint: rgba(241,73,2,.11);
+      --accent-glow: rgba(241,73,2,.22);
+      --shadow-sm:   0 1px 4px rgba(0,0,0,.35);
+      --shadow-md:   0 4px 18px rgba(0,0,0,.45);
+      --shadow-lg:   0 8px 36px rgba(0,0,0,.55);
+    }
+
+    /* ── Reset ─────────────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Space Grotesk', system-ui, -apple-system, sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      transition: background var(--dur), color var(--dur);
+      min-height: 100dvh;
+    }
+
+    /* ── Controls bar (fixed) ───────────────────────────────────────────────── */
+    .ctrl-bar {
+      position: fixed;
+      top: 14px; right: 14px;
+      z-index: 400;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .ctrl-bar.hidden { opacity: 0; pointer-events: none; transition: opacity var(--dur); }
+
+    .lang-select {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--r-sm);
+      color: var(--text);
+      padding: 6px 10px;
+      font-size: 12px;
+      font-family: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      outline: none;
+      transition: border-color var(--dur), background var(--dur), color var(--dur);
+    }
+    .lang-select:focus { border-color: var(--accent); }
+
+    .icon-btn {
+      width: 36px; height: 36px;
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--r-sm);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      color: var(--muted);
+      transition: border-color var(--dur), color var(--dur), background var(--dur), transform .12s;
+    }
+    .icon-btn:hover { border-color: var(--accent); color: var(--accent); transform: scale(1.06); }
+    .icon-btn:active { transform: scale(.94); }
+
+    /* ── Shared components ─────────────────────────────────────────────────── */
+    .search-row {
+      display: flex;
+      gap: 8px;
+      align-items: stretch;
+    }
+
+    .search-input {
+      flex: 1;
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--r);
+      padding: 13px 18px;
+      font-size: 15px;
+      font-family: inherit;
+      font-weight: 500;
+      color: var(--text);
+      outline: none;
+      transition: border-color var(--dur), box-shadow var(--dur), background var(--dur);
+      min-width: 0;
+    }
+    .search-input::placeholder { color: var(--muted); font-weight: 400; }
+    .search-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-tint);
+    }
+
+    .search-btn {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--r);
+      padding: 13px 22px;
+      font-size: 15px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      white-space: nowrap;
+      display: flex; align-items: center; gap: 7px;
+      box-shadow: 0 3px 14px var(--accent-glow);
+      transition: background var(--dur), transform .12s, box-shadow var(--dur);
+      flex-shrink: 0;
+    }
+    .search-btn:hover { background: var(--accent-h); box-shadow: 0 5px 22px var(--accent-glow); }
+    .search-btn:active { transform: scale(.97); }
+    .search-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+    .mic-btn {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--r);
+      padding: 0 14px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--muted);
+      flex-shrink: 0;
+      transition: border-color var(--dur), color var(--dur), background var(--dur);
+    }
+    .mic-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .mic-btn.recording {
+      border-color: #ef4444;
+      color: #ef4444;
+      background: rgba(239,68,68,.08);
+      animation: mic-pulse 1.2s ease-in-out infinite;
+    }
+    @keyframes mic-pulse {
+      0%,100% { box-shadow: 0 0 0 0 rgba(239,68,68,.3); }
+      50%      { box-shadow: 0 0 0 9px rgba(239,68,68,0); }
+    }
+
+    /* ── HERO ──────────────────────────────────────────────────────────────── */
+    #hero {
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 64px 20px 100px;
+      animation: fadeUp .45s ease both;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .hero-logo {
+      display: flex; align-items: center; gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    .hero-logo-icon {
+      width: 56px; height: 56px;
+      background: var(--accent);
+      border-radius: 18px;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 8px 24px var(--accent-glow);
+    }
+
+    .hero-logo-text {
+      font-size: 44px;
+      font-weight: 700;
+      letter-spacing: -2px;
+      color: var(--text);
+    }
+
+    .hero-tagline {
+      font-size: 16px;
+      color: var(--muted);
+      margin-bottom: 44px;
+      font-weight: 400;
+      text-align: center;
+      max-width: 420px;
+    }
+
+    .hero-search-box {
+      width: 100%;
+      max-width: 660px;
+    }
+
+    .hero-search-box .search-row {
+      gap: 8px;
+    }
+
+    .hero-search-box .search-input {
+      font-size: 16px;
+      padding: 16px 20px;
+      border-radius: var(--r-lg);
+    }
+
+    .hero-search-box .search-btn {
+      font-size: 15px;
+      padding: 16px 26px;
+      border-radius: var(--r-lg);
+    }
+
+    .hero-search-box .mic-btn {
+      border-radius: var(--r-lg);
+      min-width: 54px;
+      height: auto;
+    }
+
+    .hero-options {
+      margin-top: 16px;
+      display: flex; align-items: center; gap: 8px;
+      color: var(--muted);
+      font-size: 13px; font-weight: 500;
+    }
+
+    .hero-options select {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--r-xs);
+      color: var(--text);
+      padding: 4px 10px;
+      font-size: 13px; font-family: inherit; font-weight: 600;
+      cursor: pointer; outline: none;
+      transition: border-color var(--dur);
+    }
+    .hero-options select:focus { border-color: var(--accent); }
+
+    .hero-hint {
+      margin-top: 20px;
+      display: flex; align-items: center; gap: 8px;
+      background: rgba(241,73,2,.06);
+      border: 1px solid rgba(241,73,2,.2);
+      border-radius: var(--r-sm);
+      padding: 10px 16px;
+      font-size: 13px;
+      color: var(--accent);
+      max-width: 660px; width: 100%;
+    }
+    .hero-hint a { color: var(--accent); font-weight: 700; }
+
+    .model-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 11px; font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 999px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+    .model-badge-ai {
+      background: var(--accent-tint);
+      border-color: rgba(241,73,2,.25);
+      color: var(--accent);
+    }
+    .model-badge-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: currentColor; flex-shrink: 0;
+    }
+
+    .hero-footer {
+      position: fixed;
+      bottom: 22px; left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+    }
+
+    .hero-admin-link {
+      font-size: 12px;
+      color: var(--muted);
+      text-decoration: none;
+      font-weight: 500;
+      padding: 7px 14px;
+      border-radius: var(--r-xs);
+      border: 1px solid var(--border);
+      background: var(--surface);
+      transition: color var(--dur), border-color var(--dur);
+    }
+    .hero-admin-link:hover { color: var(--accent); border-color: var(--accent); }
+
+    /* ── LOADING ───────────────────────────────────────────────────────────── */
+    #loading {
+      min-height: 100dvh;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 28px;
+      padding: 24px;
+    }
+
+    .eq-wrapper {
+      display: flex; align-items: flex-end; gap: 5px;
+      height: 50px;
+    }
+    .eq-bar {
+      width: 5px;
+      border-radius: 3px;
+      background: var(--accent);
+      animation: eq 1.1s ease-in-out infinite;
+      transform-origin: bottom;
+    }
+    .eq-bar:nth-child(1){height:18px;animation-delay:0s}
+    .eq-bar:nth-child(2){height:32px;animation-delay:.14s}
+    .eq-bar:nth-child(3){height:46px;animation-delay:.28s}
+    .eq-bar:nth-child(4){height:30px;animation-delay:.42s}
+    .eq-bar:nth-child(5){height:46px;animation-delay:.28s}
+    .eq-bar:nth-child(6){height:32px;animation-delay:.14s}
+    .eq-bar:nth-child(7){height:18px;animation-delay:0s}
+    @keyframes eq {
+      0%,100%{transform:scaleY(.2);opacity:.3}
+      50%{transform:scaleY(1);opacity:1}
+    }
+    .loading-text { font-size: 16px; color: var(--muted); font-weight: 500; }
+    .loading-text em { font-style: normal; color: var(--text); font-weight: 700; }
+
+    /* ── RESULTS ───────────────────────────────────────────────────────────── */
+    #results-view {
+      display: none;
+      flex-direction: column;
+      min-height: 100dvh;
+    }
+
+    .results-topbar {
+      position: sticky; top: 0; z-index: 200;
+      background: color-mix(in srgb, var(--bg) 82%, transparent);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border-bottom: 1px solid var(--border);
+      padding: 9px 18px;
+      display: flex; align-items: center; gap: 10px;
+      transition: background var(--dur), border-color var(--dur);
+    }
+
+    .topbar-back {
+      width: 34px; height: 34px;
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--r-sm);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; flex-shrink: 0; color: var(--muted);
+      transition: border-color var(--dur), color var(--dur), background var(--dur);
+    }
+    .topbar-back:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-tint); }
+
+    .topbar-logo {
+      display: flex; align-items: center; gap: 8px;
+      font-weight: 700; font-size: 16px; letter-spacing: -.5px;
+      color: var(--text); text-decoration: none; cursor: pointer;
+      white-space: nowrap; flex-shrink: 0;
+      transition: color var(--dur);
+    }
+    .topbar-logo:hover { color: var(--accent); }
+
+    .topbar-logo-icon {
+      width: 28px; height: 28px;
+      background: var(--accent);
+      border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .topbar-search {
+      flex: 1;
+      display: flex; gap: 7px;
+      max-width: 500px;
+    }
+    .topbar-search .search-input {
+      padding: 8px 14px; font-size: 14px; border-radius: var(--r-sm);
+    }
+    .topbar-search .search-btn {
+      padding: 8px 16px; font-size: 14px; border-radius: var(--r-sm);
+    }
+    .topbar-search .mic-btn {
+      border-radius: var(--r-sm);
+      min-width: 40px; padding: 0 11px;
+    }
+
+    .topbar-right {
+      display: flex; align-items: center; gap: 7px;
+      margin-left: auto; flex-shrink: 0;
+    }
+
+    .topbar-admin {
+      font-size: 13px; color: var(--muted); text-decoration: none;
+      padding: 5px 12px; border-radius: var(--r-xs);
+      font-weight: 600; white-space: nowrap;
+      border: 1.5px solid transparent;
+      transition: color var(--dur), background var(--dur), border-color var(--dur);
+    }
+    .topbar-admin:hover { color: var(--accent); background: var(--accent-tint); border-color: var(--accent); }
+
+    .topbar-icon-btn {
+      width: 32px; height: 32px;
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--r-sm);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; color: var(--muted); flex-shrink: 0;
+      transition: border-color var(--dur), color var(--dur);
+    }
+    .topbar-icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* Results body — single column, vertical stack */
+    .results-body {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      max-width: 820px; width: 100%;
+      margin: 0 auto;
+      padding: 18px 18px 60px;
+    }
+
+    /* ── Compact player (shown above cards when a result is active) ── */
+    .player-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-xl);
+      overflow: hidden;
+      box-shadow: var(--shadow-md);
+      transition: background var(--dur), border-color var(--dur);
+      animation: slideUp .25s ease both;
+    }
+
+    /* "You asked: …" header */
+    .player-query {
+      display: flex; align-items: center; gap: 7px;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px; font-weight: 600; color: var(--muted);
+    }
+    .player-query-text { color: var(--text); }
+
+    /* Media wrapper — no forced aspect ratio; video/iframe determine own size */
+    .player-media {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      background: var(--surface2);
+      overflow: hidden;
+    }
+
+    /* YouTube iframe — 16:9, max ~240px tall */
+    #player-area iframe {
+      display: block; border: none;
+      aspect-ratio: 16/9;
+      width: min(100%, 430px);
+      height: auto;
+    }
+
+    /* HTML5 video — transparent bg (no black bars), natural aspect ratio */
+    #player-area video {
+      display: block;
+      max-height: 380px;
+      max-width: 100%;
+      width: auto; height: auto;
+      background: transparent;
+    }
+
+    .player-info {
+      padding: 12px 16px;
+      border-top: 1px solid var(--border);
+      display: none;
+    }
+
+    .player-video-title {
+      font-size: 12px; font-weight: 600; color: var(--muted);
+      margin-bottom: 5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
+    .player-segment-text {
+      font-size: 13px; color: var(--text); line-height: 1.6;
+      display: -webkit-box;
+      -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+    }
+
+    /* ── AI Answer card ───────────────────────────────────────────────────── */
+    .ai-answer-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-xl);
+      overflow: hidden;
+      box-shadow: var(--shadow-md);
+      animation: slideUp .25s ease both;
+      transition: background var(--dur), border-color var(--dur);
+    }
+
+    .ai-answer-header {
+      display: flex; align-items: center; gap: 8px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px; font-weight: 700;
+      color: var(--muted); letter-spacing: .04em; text-transform: uppercase;
+    }
+    .ai-answer-header-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--accent);
+      flex-shrink: 0;
+    }
+    .ai-answer-header-dot.thinking {
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    .ai-answer-query {
+      font-size: 15px; font-weight: 700; color: var(--text);
+      padding: 14px 16px 0;
+      line-height: 1.4;
+    }
+
+    .ai-answer-body {
+      padding: 10px 16px 16px;
+      font-size: 14px; line-height: 1.75; color: var(--text);
+      min-height: 40px;
+    }
+    .ai-answer-body .ai-cite {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 18px; height: 18px;
+      font-size: 10px; font-weight: 800;
+      background: var(--accent-tint); color: var(--accent);
+      border: 1px solid rgba(241,73,2,.25);
+      border-radius: 4px;
+      cursor: pointer;
+      vertical-align: middle;
+      transition: background var(--dur);
+      text-decoration: none;
+      margin: 0 1px;
+    }
+    .ai-answer-body .ai-cite:hover { background: var(--accent); color: #fff; }
+
+    /* ── Source cards grid ───────────────────────────────────────────────── */
+    .sources-section {
+      display: flex; flex-direction: column; gap: 10px;
+    }
+
+    .sources-label {
+      font-size: 11px; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: .08em;
+    }
+
+    .sources-grid {
+      display: flex; flex-wrap: wrap; gap: 10px;
+    }
+
+    .source-card {
+      display: flex; flex-direction: column;
+      width: 180px; flex-shrink: 0;
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--r);
+      overflow: hidden;
+      cursor: pointer;
+      transition: border-color var(--dur), box-shadow var(--dur), transform .15s;
+      animation: slideUp .3s ease both;
+      text-decoration: none;
+    }
+    .source-card:hover { border-color: var(--accent); box-shadow: var(--shadow-md); transform: translateY(-2px); }
+    .source-card.active { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-tint); }
+
+    .source-card-num {
+      position: absolute; top: 6px; left: 6px;
+      width: 20px; height: 20px;
+      background: var(--accent); color: #fff;
+      border-radius: 4px;
+      font-size: 10px; font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    .source-thumb-wrap {
+      position: relative;
+      aspect-ratio: 16/9;
+      background: var(--surface2);
+      overflow: hidden;
+    }
+    .source-thumb-wrap img {
+      width: 100%; height: 100%; object-fit: cover;
+      display: block;
+    }
+    .source-thumb-placeholder {
+      width: 100%; height: 100%;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--muted);
+    }
+
+    .source-card-body { padding: 8px 10px 10px; }
+    .source-card-title {
+      font-size: 11px; font-weight: 600; color: var(--text);
+      line-height: 1.4;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+      margin-bottom: 5px;
+    }
+    .source-card-meta {
+      display: flex; align-items: center; gap: 5px;
+      flex-wrap: wrap;
+    }
+    .source-ts {
+      font-size: 10px; font-weight: 700;
+      background: var(--accent-tint); color: var(--accent);
+      border: 1px solid rgba(241,73,2,.2);
+      border-radius: 999px; padding: 1px 7px;
+    }
+    .source-platform-badge {
+      font-size: 10px; font-weight: 600; color: var(--muted);
+    }
+    .source-yt-link {
+      display: flex; align-items: center; gap: 4px;
+      font-size: 10px; font-weight: 700; color: var(--accent);
+      text-decoration: none; margin-top: 5px;
+    }
+    .source-yt-link:hover { text-decoration: underline; }
+
+
+    /* Results column */
+    .results-col {}
+
+    .results-header-label {
+      font-size: 12px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .1em;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+
+    .results-list { display: flex; flex-direction: column; gap: 10px; }
+
+    /* Result card */
+    .result-card {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--r);
+      padding: 16px 18px;
+      cursor: pointer;
+      transition: border-color var(--dur), box-shadow var(--dur), transform .15s, background var(--dur);
+      position: relative; overflow: hidden;
+      animation: slideUp .3s ease both;
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .result-card:nth-child(1){animation-delay:.04s}
+    .result-card:nth-child(2){animation-delay:.09s}
+    .result-card:nth-child(3){animation-delay:.14s}
+    .result-card:nth-child(4){animation-delay:.19s}
+    .result-card:nth-child(5){animation-delay:.24s}
+
+    .result-card::before {
+      content: ""; position: absolute;
+      left: 0; top: 0; bottom: 0; width: 3px;
+      background: var(--accent); opacity: 0;
+      transition: opacity var(--dur);
+    }
+
+    .result-card:hover { border-color: var(--accent); box-shadow: var(--shadow-md); transform: translateY(-2px); }
+    .result-card:hover::before { opacity: 1; }
+    .result-card.active { border-color: var(--accent); background: var(--accent-tint); }
+    .result-card.active::before { opacity: 1; }
+
+    .card-header {
+      display: flex; align-items: flex-start;
+      justify-content: space-between; gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .card-title { font-size: 13px; font-weight: 600; color: var(--text); line-height: 1.4; flex: 1; }
+    .card-badges { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
+
+    .badge {
+      font-size: 11px; font-weight: 700;
+      padding: 2px 8px; border-radius: 999px;
+      white-space: nowrap; font-variant-numeric: tabular-nums;
+    }
+    .badge-ts {
+      background: var(--accent-tint); color: var(--accent);
+      border: 1px solid rgba(241,73,2,.2);
+    }
+    .badge-score {
+      background: rgba(16,185,129,.08); color: #059669;
+      border: 1px solid rgba(16,185,129,.2);
+    }
+    [data-theme="dark"] .badge-score { color: #34d399; background: rgba(16,185,129,.12); }
+
+    .card-text mark {
+      background: rgba(241,73,2,.18); color: var(--text);
+      border-radius: 3px; padding: 0 2px;
+    }
+    [data-theme="dark"] .card-text mark { background: rgba(241,73,2,.30); }
+
+    .card-text {
+      font-size: 13px; color: var(--muted); line-height: 1.6;
+      display: -webkit-box;
+      -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+    }
+
+    .card-play-hint {
+      margin-top: 10px; font-size: 12px; font-weight: 600;
+      color: var(--accent);
+      display: flex; align-items: center; gap: 5px;
+      opacity: 0; transition: opacity var(--dur);
+    }
+    .result-card:hover .card-play-hint,
+    .result-card.active .card-play-hint { opacity: 1; }
+
+    /* States */
+    .state-error {
+      background: rgba(220,38,38,.07);
+      border: 1px solid rgba(220,38,38,.18);
+      border-radius: var(--r-sm);
+      padding: 14px 16px; font-size: 13px; color: #dc2626;
+      margin-bottom: 12px;
+    }
+
+    .state-empty {
+      padding: 60px 24px; text-align: center; color: var(--muted);
+      animation: fadeUp .35s ease;
+    }
+    .state-empty-icon {
+      font-size: 40px; margin-bottom: 16px;
+      display: block; line-height: 1;
+      filter: grayscale(.3);
+    }
+    .state-empty h3 {
+      font-size: 20px; font-weight: 700; margin-bottom: 10px;
+      color: var(--text); letter-spacing: -.4px;
+    }
+    .state-empty p { font-size: 14px; line-height: 1.7; max-width: 320px; margin: 0 auto; }
+    .state-empty a { color: var(--accent); font-weight: 700; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+    /* ── Responsive ────────────────────────────────────────────────────────── */
+    @media (max-width: 960px) {
+      .results-body { padding: 14px 12px 60px; }
+    }
+
+    @media (max-width: 680px) {
+      .topbar-logo span { display: none; }
+      .topbar-right .topbar-admin { display: none; }
+      .hero-search-box .search-btn .btn-label { display: none; }
+      .results-body { padding: 14px 12px 60px; gap: 14px; }
+    }
+
+    @media (max-width: 480px) {
+      .hero-logo-text { font-size: 36px; }
+      .hero-tagline { font-size: 14px; }
+      .ctrl-bar { gap: 6px; }
+      .lang-select { font-size: 11px; padding: 5px 8px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Floating controls (hero state) ───────────────────────────────────── -->
+<div class="ctrl-bar" id="hero-ctrl">
+  <select class="lang-select" id="lang-picker" onchange="setLang(this.value)">
+    <option value="en">EN</option>
+    <option value="fr">FR</option>
+    <option value="es">ES</option>
+    <option value="de">DE</option>
+    <option value="pt">PT</option>
+    <option value="it">IT</option>
+    <option value="zh">中文</option>
+    <option value="ja">日本語</option>
+    <option value="ar">AR</option>
+    <option value="nl">NL</option>
+    <option value="pl">PL</option>
+    <option value="cs">CS</option>
+    <option value="sv">SV</option>
+    <option value="da">DA</option>
+    <option value="fi">FI</option>
+    <option value="el">EL</option>
+    <option value="hu">HU</option>
+    <option value="ro">RO</option>
+    <option value="bg">BG</option>
+    <option value="hr">HR</option>
+    <option value="sk">SK</option>
+    <option value="sl">SL</option>
+    <option value="et">ET</option>
+    <option value="lv">LV</option>
+    <option value="lt">LT</option>
+    <option value="mt">MT</option>
+    <option value="ga">GA</option>
+  </select>
+  <button class="icon-btn" id="hero-theme-btn" onclick="toggleTheme()" title="Toggle theme">
+    <!-- icon set by JS -->
+  </button>
+</div>
+
+<!-- ══════════════════════════ HERO ════════════════════════════════════════ -->
+<div id="hero">
+  <div class="hero-logo">
+    <div class="hero-logo-icon">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+      </svg>
+    </div>
+    <span class="hero-logo-text">Seekr</span>
+  </div>
+
+  <p id="hero-tagline" class="hero-tagline"></p>
+
+  <div class="hero-search-box">
+    <div class="search-row">
+      <button id="hero-mic-btn" class="mic-btn" onclick="toggleMic('hero')" title="Voice search">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+          <line x1="12" y1="19" x2="12" y2="23"/>
+          <line x1="8" y1="23" x2="16" y2="23"/>
+        </svg>
+      </button>
+      <input id="hero-input" class="search-input" type="text" autocomplete="off" spellcheck="false" />
+      <button id="hero-btn" class="search-btn" onclick="doSearch()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+        <span id="hero-btn-text" class="btn-label"></span>
+      </button>
+    </div>
+  </div>
+
+  <div class="hero-options">
+    <span id="results-label-hero"></span>
+    <select id="top-k-select">
+      <option value="3" selected>3</option>
+      <option value="5">5</option>
+      <option value="8">8</option>
+      <option value="10">10</option>
+    </select>
+  </div>
+
+  <div id="hero-hint" style="display:none;" class="hero-hint">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+    </svg>
+    <span id="hero-hint-text"></span>
+  </div>
+
+  <div id="model-badges" style="display:none; margin-top:18px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:center;">
+    <span id="badge-embed" class="model-badge"></span>
+    <span id="badge-chat" class="model-badge model-badge-ai" style="display:none"></span>
+  </div>
+
+  <div class="hero-footer">
+    <a class="hero-admin-link" id="hero-admin-link" href="/admin"></a>
+  </div>
+</div>
+
+<!-- ══════════════════════════ LOADING ════════════════════════════════════ -->
+<div id="loading">
+  <div class="eq-wrapper">
+    <div class="eq-bar"></div>
+    <div class="eq-bar"></div>
+    <div class="eq-bar"></div>
+    <div class="eq-bar"></div>
+    <div class="eq-bar"></div>
+    <div class="eq-bar"></div>
+    <div class="eq-bar"></div>
+  </div>
+  <p class="loading-text"><span id="loading-prefix"></span> <em id="loading-query">"…"</em></p>
+</div>
+
+<!-- ══════════════════════════ RESULTS ════════════════════════════════════ -->
+<div id="results-view">
+
+  <div class="results-topbar">
+    <button class="topbar-back" onclick="backToHero()" title="Back">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M19 12H5M12 5l-7 7 7 7"/>
+      </svg>
+    </button>
+
+    <span class="topbar-logo" onclick="backToHero()">
+      <div class="topbar-logo-icon">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+      </div>
+      <span>Seekr</span>
+    </span>
+
+    <div class="topbar-search">
+      <button id="results-mic-btn" class="mic-btn" onclick="toggleMic('results')" title="Voice search">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+          <line x1="12" y1="19" x2="12" y2="23"/>
+          <line x1="8" y1="23" x2="16" y2="23"/>
+        </svg>
+      </button>
+      <input id="results-input" class="search-input" type="text" autocomplete="off" spellcheck="false" />
+      <button class="search-btn" onclick="doSearchFromResults()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+        <span id="results-btn-text" class="btn-label"></span>
+      </button>
+    </div>
+
+    <div class="topbar-right">
+      <a class="topbar-admin" id="topbar-admin-link" href="/admin"></a>
+      <button class="topbar-icon-btn" onclick="toggleTheme()" title="Toggle theme" id="topbar-theme-btn">
+        <!-- icon set by JS -->
+      </button>
+    </div>
+  </div>
+
+  <div class="results-body" id="results-body">
+
+    <!-- AI Answer (shown when chat_model is configured) -->
+    <div class="ai-answer-card" id="ai-answer-card" style="display:none">
+      <div class="ai-answer-header">
+        <div class="ai-answer-header-dot" id="ai-dot"></div>
+        <span id="ai-header-label">AI Answer</span>
+      </div>
+      <div class="ai-answer-query" id="ai-answer-query"></div>
+      <div class="ai-answer-body" id="ai-answer-body"></div>
+    </div>
+
+    <!-- Source cards (shown alongside AI answer) -->
+    <div class="sources-section" id="sources-section" style="display:none">
+      <div class="sources-label">Sources</div>
+      <div class="sources-grid" id="sources-grid"></div>
+    </div>
+
+    <!-- Compact player (hidden until a result card is clicked) -->
+    <div class="player-section" id="player-section" style="display:none">
+      <div class="player-query" id="player-query">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        You asked: <span class="player-query-text" id="player-query-text"></span>
+      </div>
+      <div class="player-media">
+        <div id="player-area"></div>
+      </div>
+      <div id="player-info" class="player-info">
+        <div id="player-video-title" class="player-video-title"></div>
+        <div id="player-segment-text" class="player-segment-text"></div>
+      </div>
+    </div>
+
+    <!-- Result cards -->
+    <div class="results-col" id="results-col">
+      <div id="results-header-label" class="results-header-label"></div>
+      <div id="results-container" class="results-list"></div>
+    </div>
+
+  </div>
+
+</div><!-- /results-view -->
+
+<script>
+// ── i18n ─────────────────────────────────────────────────────────────────────
+const LANGS = {
+  en: {
+    tagline: 'Ask a question. Search inside any video, audio or document.',
+    placeholder: 'What are you looking for in your videos?',
+    placeholder_results: 'Search again…',
+    search: 'Search',
+    results_label: 'Results:',
+    loading_prefix: 'Searching for',
+    no_results_title: 'No results found',
+    no_results_body: 'Try a different query, or',
+    no_results_link: 'index more videos',
+    play_from: 'Play from here',
+    click_to_play: 'Click a result to play',
+    admin: 'Admin',
+    admin_panel: 'Admin panel',
+    hint_text: 'No videos indexed yet.',
+    hint_link: 'Go to the admin panel',
+    hint_suffix: 'to add video sources.',
+  },
+  fr: {
+    tagline: 'Posez une question. Cherchez dans toute vidéo, audio ou document.',
+    placeholder: 'Que cherchez-vous dans vos vidéos ?',
+    placeholder_results: 'Nouvelle recherche…',
+    search: 'Rechercher',
+    results_label: 'Résultats :',
+    loading_prefix: 'Recherche de',
+    no_results_title: 'Aucun résultat',
+    no_results_body: 'Essayez une autre requête ou',
+    no_results_link: 'indexez plus de vidéos',
+    play_from: 'Lire depuis ici',
+    click_to_play: 'Cliquez sur un résultat pour lire',
+    admin: 'Admin', admin_panel: 'Panneau admin',
+    hint_text: 'Aucune vidéo indexée.',
+    hint_link: 'Accéder au panneau admin',
+    hint_suffix: 'pour ajouter des sources.',
+  },
+  es: {
+    tagline: 'Haz una pregunta. Busca en cualquier vídeo, audio o documento.',
+    placeholder: '¿Qué buscas en tus vídeos?',
+    placeholder_results: 'Buscar de nuevo…',
+    search: 'Buscar', results_label: 'Resultados:',
+    loading_prefix: 'Buscando',
+    no_results_title: 'Sin resultados',
+    no_results_body: 'Prueba otra consulta o',
+    no_results_link: 'indexa más vídeos',
+    play_from: 'Reproducir desde aquí',
+    click_to_play: 'Clic en un resultado para reproducir',
+    admin: 'Admin', admin_panel: 'Panel de administración',
+    hint_text: 'No hay vídeos indexados.',
+    hint_link: 'Ir al panel de administración',
+    hint_suffix: 'para añadir fuentes.',
+  },
+  de: {
+    tagline: 'Stell eine Frage. Durchsuche Videos, Audios und Dokumente.',
+    placeholder: 'Was suchst du in deinen Videos?',
+    placeholder_results: 'Erneut suchen…',
+    search: 'Suchen', results_label: 'Ergebnisse:',
+    loading_prefix: 'Suche nach',
+    no_results_title: 'Keine Ergebnisse',
+    no_results_body: 'Andere Anfrage versuchen oder',
+    no_results_link: 'mehr Videos indexieren',
+    play_from: 'Ab hier abspielen',
+    click_to_play: 'Ergebnis anklicken zum Abspielen',
+    admin: 'Admin', admin_panel: 'Admin-Bereich',
+    hint_text: 'Noch keine Videos indexiert.',
+    hint_link: 'Zum Admin-Bereich',
+    hint_suffix: 'um Videoquellen hinzuzufügen.',
+  },
+  pt: {
+    tagline: 'Faça uma pergunta. Pesquise em qualquer vídeo, áudio ou documento.',
+    placeholder: 'O que procura nos seus vídeos?',
+    placeholder_results: 'Pesquisar novamente…',
+    search: 'Pesquisar', results_label: 'Resultados:',
+    loading_prefix: 'A pesquisar',
+    no_results_title: 'Sem resultados',
+    no_results_body: 'Tente outra consulta ou',
+    no_results_link: 'indexe mais vídeos',
+    play_from: 'Reproduzir a partir daqui',
+    click_to_play: 'Clique num resultado para reproduzir',
+    admin: 'Admin', admin_panel: 'Painel de administração',
+    hint_text: 'Nenhum vídeo indexado.',
+    hint_link: 'Ir ao painel de administração',
+    hint_suffix: 'para adicionar fontes.',
+  },
+  it: {
+    tagline: 'Fai una domanda. Cerca in qualsiasi video, audio o documento.',
+    placeholder: 'Cosa cerchi nei tuoi video?',
+    placeholder_results: 'Cerca di nuovo…',
+    search: 'Cerca', results_label: 'Risultati:',
+    loading_prefix: 'Ricerca di',
+    no_results_title: 'Nessun risultato',
+    no_results_body: 'Prova un\'altra query o',
+    no_results_link: 'indicizza altri video',
+    play_from: 'Riproduci da qui',
+    click_to_play: 'Clicca su un risultato per riprodurre',
+    admin: 'Admin', admin_panel: 'Pannello admin',
+    hint_text: 'Nessun video indicizzato.',
+    hint_link: 'Vai al pannello admin',
+    hint_suffix: 'per aggiungere fonti video.',
+  },
+  zh: {
+    tagline: '提问，搜索任意视频、音频或文档。',
+    placeholder: '在您的视频中寻找什么？',
+    placeholder_results: '再次搜索…',
+    search: '搜索', results_label: '结果数：',
+    loading_prefix: '正在搜索',
+    no_results_title: '未找到结果',
+    no_results_body: '请换一个查询，或',
+    no_results_link: '添加更多视频',
+    play_from: '从此处播放',
+    click_to_play: '点击结果以播放',
+    admin: '管理', admin_panel: '管理面板',
+    hint_text: '尚无已索引的视频。',
+    hint_link: '前往管理面板',
+    hint_suffix: '以添加视频来源。',
+  },
+  ja: {
+    tagline: '質問して、あらゆる動画・音声・文書を横断検索。',
+    placeholder: '動画の中で何を探していますか？',
+    placeholder_results: '再検索…',
+    search: '検索', results_label: '件数：',
+    loading_prefix: '検索中',
+    no_results_title: '結果なし',
+    no_results_body: '別のクエリを試すか、',
+    no_results_link: '動画を追加してください',
+    play_from: 'ここから再生',
+    click_to_play: '結果をクリックして再生',
+    admin: '管理', admin_panel: '管理パネル',
+    hint_text: 'まだ動画がインデックスされていません。',
+    hint_link: '管理パネルへ',
+    hint_suffix: '動画ソースを追加してください。',
+  },
+  ar: {
+    tagline: 'اطرح سؤالاً. ابحث في أي فيديو أو صوت أو مستند.',
+    placeholder: 'ماذا تبحث في مقاطعك؟',
+    placeholder_results: 'بحث مجدد…',
+    search: 'بحث', results_label: 'النتائج:',
+    loading_prefix: 'جارٍ البحث عن',
+    no_results_title: 'لا توجد نتائج',
+    no_results_body: 'جرّب استعلامًا آخر أو',
+    no_results_link: 'أضف مزيدًا من الفيديوهات',
+    play_from: 'تشغيل من هنا',
+    click_to_play: 'انقر على نتيجة للتشغيل',
+    admin: 'إدارة', admin_panel: 'لوحة الإدارة',
+    hint_text: 'لا توجد مقاطع مفهرسة بعد.',
+    hint_link: 'اذهب إلى لوحة الإدارة',
+    hint_suffix: 'لإضافة مصادر الفيديو.',
+  },
+  nl: {
+    tagline: 'Stel een vraag. Zoek in elke video, audio of document.',
+    placeholder: 'Wat zoekt u in uw video\'s?',
+    placeholder_results: 'Opnieuw zoeken…',
+    search: 'Zoeken', results_label: 'Resultaten:',
+    loading_prefix: 'Zoeken naar',
+    no_results_title: 'Geen resultaten gevonden',
+    no_results_body: 'Probeer een andere zoekopdracht of',
+    no_results_link: 'indexeer meer video\'s',
+    play_from: 'Afspelen vanaf hier',
+    click_to_play: 'Klik op een resultaat om af te spelen',
+    admin: 'Beheer', admin_panel: 'Beheerpaneel',
+    hint_text: 'Nog geen video\'s geïndexeerd.',
+    hint_link: 'Ga naar het beheerpaneel',
+    hint_suffix: 'om bronnen toe te voegen.',
+  },
+  pl: {
+    tagline: 'Zadaj pytanie. Przeszukaj dowolne wideo, audio lub dokument.',
+    placeholder: 'Czego szukasz w swoich filmach?',
+    placeholder_results: 'Szukaj ponownie…',
+    search: 'Szukaj', results_label: 'Wyniki:',
+    loading_prefix: 'Szukanie',
+    no_results_title: 'Brak wyników',
+    no_results_body: 'Spróbuj innego zapytania lub',
+    no_results_link: 'zindeksuj więcej filmów',
+    play_from: 'Odtwórz od tutaj',
+    click_to_play: 'Kliknij wynik, aby odtworzyć',
+    admin: 'Admin', admin_panel: 'Panel administracyjny',
+    hint_text: 'Brak zindeksowanych filmów.',
+    hint_link: 'Przejdź do panelu administratora',
+    hint_suffix: 'aby dodać źródła wideo.',
+  },
+  cs: {
+    tagline: 'Položte otázku. Prohledejte libovolné video, audio nebo dokument.',
+    placeholder: 'Co hledáte ve svých videích?',
+    placeholder_results: 'Hledat znovu…',
+    search: 'Hledat', results_label: 'Výsledky:',
+    loading_prefix: 'Hledání',
+    no_results_title: 'Žádné výsledky',
+    no_results_body: 'Zkuste jiný dotaz nebo',
+    no_results_link: 'zaindexujte více videí',
+    play_from: 'Přehrát odtud',
+    click_to_play: 'Kliknutím na výsledek přehrajte',
+    admin: 'Admin', admin_panel: 'Administrátorský panel',
+    hint_text: 'Žádná videa dosud nezaindexována.',
+    hint_link: 'Přejděte do administrátorského panelu',
+    hint_suffix: 'pro přidání zdrojů videa.',
+  },
+  sv: {
+    tagline: 'Ställ en fråga. Sök i vilken video, audio eller dokument som helst.',
+    placeholder: 'Vad letar du efter i dina videor?',
+    placeholder_results: 'Sök igen…',
+    search: 'Sök', results_label: 'Resultat:',
+    loading_prefix: 'Söker efter',
+    no_results_title: 'Inga resultat hittades',
+    no_results_body: 'Prova en annan sökning eller',
+    no_results_link: 'indexera fler videor',
+    play_from: 'Spela upp härifrån',
+    click_to_play: 'Klicka på ett resultat för att spela upp',
+    admin: 'Admin', admin_panel: 'Adminpanel',
+    hint_text: 'Inga videor har indexerats ännu.',
+    hint_link: 'Gå till adminpanelen',
+    hint_suffix: 'för att lägga till videokällor.',
+  },
+  da: {
+    tagline: 'Stil et spørgsmål. Søg i enhver video, lyd eller dokument.',
+    placeholder: 'Hvad leder du efter i dine videoer?',
+    placeholder_results: 'Søg igen…',
+    search: 'Søg', results_label: 'Resultater:',
+    loading_prefix: 'Søger efter',
+    no_results_title: 'Ingen resultater fundet',
+    no_results_body: 'Prøv en anden søgning eller',
+    no_results_link: 'indekser flere videoer',
+    play_from: 'Afspil herfra',
+    click_to_play: 'Klik på et resultat for at afspille',
+    admin: 'Admin', admin_panel: 'Adminpanel',
+    hint_text: 'Ingen videoer er indekseret endnu.',
+    hint_link: 'Gå til adminpanelen',
+    hint_suffix: 'for at tilføje videokilder.',
+  },
+  fi: {
+    tagline: 'Esitä kysymys. Hae mistä tahansa videosta, äänestä tai asiakirjasta.',
+    placeholder: 'Mitä etsit videoistasi?',
+    placeholder_results: 'Hae uudelleen…',
+    search: 'Hae', results_label: 'Tulokset:',
+    loading_prefix: 'Haetaan',
+    no_results_title: 'Ei tuloksia',
+    no_results_body: 'Kokeile eri hakua tai',
+    no_results_link: 'indeksoi lisää videoita',
+    play_from: 'Toista tästä',
+    click_to_play: 'Klikkaa tulosta toistaaksesi',
+    admin: 'Admin', admin_panel: 'Hallintapaneeli',
+    hint_text: 'Ei indeksoituja videoita vielä.',
+    hint_link: 'Siirry hallintapaneeliin',
+    hint_suffix: 'lisätäksesi videolähteitä.',
+  },
+  el: {
+    tagline: 'Κάντε μια ερώτηση. Αναζητήστε σε οποιοδήποτε βίντεο, ήχο ή έγγραφο.',
+    placeholder: 'Τι ψάχνετε στα βίντεό σας;',
+    placeholder_results: 'Αναζήτηση ξανά…',
+    search: 'Αναζήτηση', results_label: 'Αποτελέσματα:',
+    loading_prefix: 'Αναζήτηση για',
+    no_results_title: 'Δεν βρέθηκαν αποτελέσματα',
+    no_results_body: 'Δοκιμάστε άλλο ερώτημα ή',
+    no_results_link: 'ευρετηριάστε περισσότερα βίντεο',
+    play_from: 'Αναπαραγωγή από εδώ',
+    click_to_play: 'Κάντε κλικ σε αποτέλεσμα για αναπαραγωγή',
+    admin: 'Διαχείριση', admin_panel: 'Πίνακας διαχείρισης',
+    hint_text: 'Δεν υπάρχουν ευρετηριασμένα βίντεο.',
+    hint_link: 'Μεταβείτε στον πίνακα διαχείρισης',
+    hint_suffix: 'για να προσθέσετε πηγές βίντεο.',
+  },
+  hu: {
+    tagline: 'Tegyen fel kérdést. Keressen bármely videóban, hanganyagban vagy dokumentumban.',
+    placeholder: 'Mit keres a videóiban?',
+    placeholder_results: 'Keresés újra…',
+    search: 'Keresés', results_label: 'Eredmények:',
+    loading_prefix: 'Keresés:',
+    no_results_title: 'Nincs találat',
+    no_results_body: 'Próbáljon más lekérdezést, vagy',
+    no_results_link: 'indexeljen több videót',
+    play_from: 'Lejátszás innen',
+    click_to_play: 'Kattintson egy eredményre a lejátszáshoz',
+    admin: 'Admin', admin_panel: 'Adminisztrátor panel',
+    hint_text: 'Még nincsenek indexelt videók.',
+    hint_link: 'Lépjen az adminisztrációs panelre',
+    hint_suffix: 'videóforrások hozzáadásához.',
+  },
+  ro: {
+    tagline: 'Pune o întrebare. Caută în orice video, audio sau document.',
+    placeholder: 'Ce cauți în videoclipurile tale?',
+    placeholder_results: 'Caută din nou…',
+    search: 'Caută', results_label: 'Rezultate:',
+    loading_prefix: 'Se caută',
+    no_results_title: 'Nu s-au găsit rezultate',
+    no_results_body: 'Încearcă o altă interogare sau',
+    no_results_link: 'indexează mai multe videoclipuri',
+    play_from: 'Redă de aici',
+    click_to_play: 'Faceți clic pe un rezultat pentru a reda',
+    admin: 'Admin', admin_panel: 'Panou de administrare',
+    hint_text: 'Niciun videoclip indexat încă.',
+    hint_link: 'Mergeți la panoul de administrare',
+    hint_suffix: 'pentru a adăuga surse video.',
+  },
+  bg: {
+    tagline: 'Задайте въпрос. Търсете във всяко видео, аудио или документ.',
+    placeholder: 'Какво търсите в своите видеа?',
+    placeholder_results: 'Търси отново…',
+    search: 'Търси', results_label: 'Резултати:',
+    loading_prefix: 'Търсене на',
+    no_results_title: 'Няма намерени резултати',
+    no_results_body: 'Опитайте друга заявка или',
+    no_results_link: 'индексирайте повече видеа',
+    play_from: 'Възпроизведи от тук',
+    click_to_play: 'Кликнете върху резултат за възпроизвеждане',
+    admin: 'Администрация', admin_panel: 'Административен панел',
+    hint_text: 'Все още няма индексирани видеа.',
+    hint_link: 'Отидете в административния панел',
+    hint_suffix: 'за да добавите видео източници.',
+  },
+  hr: {
+    tagline: 'Postavite pitanje. Pretražite bilo koji video, audio ili dokument.',
+    placeholder: 'Što tražite u svojim videozapisima?',
+    placeholder_results: 'Pretražite ponovno…',
+    search: 'Traži', results_label: 'Rezultati:',
+    loading_prefix: 'Pretraživanje za',
+    no_results_title: 'Nema rezultata',
+    no_results_body: 'Isprobajte drugi upit ili',
+    no_results_link: 'indeksirajte više videa',
+    play_from: 'Reproduciraj odavde',
+    click_to_play: 'Kliknite na rezultat za reprodukciju',
+    admin: 'Admin', admin_panel: 'Administratorska ploča',
+    hint_text: 'Još nema indeksiranih videa.',
+    hint_link: 'Idite na administratorsku ploču',
+    hint_suffix: 'za dodavanje video izvora.',
+  },
+  sk: {
+    tagline: 'Položte otázku. Prehľadajte akékoľvek video, zvuk alebo dokument.',
+    placeholder: 'Čo hľadáte vo svojich videách?',
+    placeholder_results: 'Hľadať znova…',
+    search: 'Hľadať', results_label: 'Výsledky:',
+    loading_prefix: 'Hľadanie',
+    no_results_title: 'Žiadne výsledky',
+    no_results_body: 'Skúste iný dotaz alebo',
+    no_results_link: 'zaindexujte viac videí',
+    play_from: 'Prehrať odtiaľto',
+    click_to_play: 'Kliknite na výsledok pre prehranie',
+    admin: 'Admin', admin_panel: 'Administrátorský panel',
+    hint_text: 'Žiadne videá doteraz nezaindexované.',
+    hint_link: 'Prejdite na administrátorský panel',
+    hint_suffix: 'pre pridanie zdrojov videa.',
+  },
+  sl: {
+    tagline: 'Postavite vprašanje. Iščite v katerem koli videu, avdiu ali dokumentu.',
+    placeholder: 'Kaj iščete v svojih videoposnetkih?',
+    placeholder_results: 'Iskanje znova…',
+    search: 'Iskanje', results_label: 'Rezultati:',
+    loading_prefix: 'Iskanje za',
+    no_results_title: 'Ni rezultatov',
+    no_results_body: 'Poskusite drug poizvedbo ali',
+    no_results_link: 'indeksirajte več videoposnetkov',
+    play_from: 'Predvajaj od tukaj',
+    click_to_play: 'Kliknite na rezultat za predvajanje',
+    admin: 'Admin', admin_panel: 'Skrbniška plošča',
+    hint_text: 'Noben videoposnetek še ni indeksiran.',
+    hint_link: 'Pojdite na skrbniško ploščo',
+    hint_suffix: 'za dodajanje virov videa.',
+  },
+  et: {
+    tagline: 'Esitage küsimus. Otsige mis tahes videost, helifailist või dokumendist.',
+    placeholder: 'Mida otsite oma videotes?',
+    placeholder_results: 'Otsi uuesti…',
+    search: 'Otsi', results_label: 'Tulemused:',
+    loading_prefix: 'Otsimine',
+    no_results_title: 'Tulemusi ei leitud',
+    no_results_body: 'Proovige teist päringut või',
+    no_results_link: 'indekseerige rohkem videoid',
+    play_from: 'Esita siit',
+    click_to_play: 'Klõpsake tulemusel esitamiseks',
+    admin: 'Admin', admin_panel: 'Halduspaneel',
+    hint_text: 'Videoid pole veel indekseeritud.',
+    hint_link: 'Minge halduspaneelile',
+    hint_suffix: 'videoallikate lisamiseks.',
+  },
+  lv: {
+    tagline: 'Uzdodiet jautājumu. Meklējiet jebkurā video, audio vai dokumentā.',
+    placeholder: 'Ko meklējat savos videoklipos?',
+    placeholder_results: 'Meklēt vēlreiz…',
+    search: 'Meklēt', results_label: 'Rezultāti:',
+    loading_prefix: 'Meklēšana pēc',
+    no_results_title: 'Nav atrasto rezultātu',
+    no_results_body: 'Mēģiniet citu vaicājumu vai',
+    no_results_link: 'indeksējiet vairāk video',
+    play_from: 'Atskaņot no šejienes',
+    click_to_play: 'Noklikšķiniet uz rezultāta, lai atskaņotu',
+    admin: 'Admin', admin_panel: 'Administrācijas panelis',
+    hint_text: 'Vēl nav indeksētu videoklipu.',
+    hint_link: 'Doties uz administrācijas paneli',
+    hint_suffix: 'lai pievienotu video avotus.',
+  },
+  lt: {
+    tagline: 'Užduokite klausimą. Ieškokite bet kuriame vaizdo, garso įraše ar dokumente.',
+    placeholder: 'Ko ieškote savo vaizdo įrašuose?',
+    placeholder_results: 'Ieškoti vėl…',
+    search: 'Ieškoti', results_label: 'Rezultatai:',
+    loading_prefix: 'Ieškoma',
+    no_results_title: 'Rezultatų nerasta',
+    no_results_body: 'Išbandykite kitą užklausą arba',
+    no_results_link: 'indeksuokite daugiau vaizdo įrašų',
+    play_from: 'Leisti nuo čia',
+    click_to_play: 'Spustelėkite rezultatą, kad leistumėte',
+    admin: 'Admin', admin_panel: 'Administravimo skydelis',
+    hint_text: 'Dar nėra indeksuotų vaizdo įrašų.',
+    hint_link: 'Eiti į administravimo skydelį',
+    hint_suffix: 'norėdami pridėti vaizdo šaltinius.',
+  },
+  mt: {
+    tagline: 'Istaqsi domanda. Fittex fi kwalunkwe vidjow, awdjo jew dokument.',
+    placeholder: 'X\'qed tfittex fil-vidjows tiegħek?',
+    placeholder_results: 'Fittex mill-ġdid…',
+    search: 'Fittex', results_label: 'Riżultati:',
+    loading_prefix: 'Qed nfittex',
+    no_results_title: 'Ma nstab l-ebda riżultat',
+    no_results_body: 'Ipprova mistoqsija oħra jew',
+    no_results_link: 'indirizza aktar vidjows',
+    play_from: 'Daqq minn hawn',
+    click_to_play: 'Ikklikkja fuq riżultat biex daqq',
+    admin: 'Admin', admin_panel: 'Panel tal-amministratur',
+    hint_text: 'L-ebda vidjow ma ġie indikat s\'issa.',
+    hint_link: 'Mur fil-panel tal-amministratur',
+    hint_suffix: 'biex iżżid sorsi tal-vidjow.',
+  },
+  ga: {
+    tagline: 'Cuir ceist. Cuardaigh in aon fhíseán, fuaim nó cáipéis.',
+    placeholder: 'Cad atá á lorg agat i do chuid físeán?',
+    placeholder_results: 'Cuardaigh arís…',
+    search: 'Cuardaigh', results_label: 'Torthaí:',
+    loading_prefix: 'Ag cuardach',
+    no_results_title: 'Níor aimsíodh torthaí',
+    no_results_body: 'Bain triail as ceist eile, nó',
+    no_results_link: 'innéacsaigh níos mó físeán',
+    play_from: 'Seinn ón áit seo',
+    click_to_play: 'Cliceáil ar thoradh le seinm',
+    admin: 'Riarachán', admin_panel: 'Painéal riaracháin',
+    hint_text: 'Níl aon fhíseán innéacsaithe fós.',
+    hint_link: 'Téigh go dtí an painéal riaracháin',
+    hint_suffix: 'chun foinsí físeán a chur leis.',
+  },
+};
+
+const LANG_BCP47 = {
+  en:'en-US', fr:'fr-FR', es:'es-ES', de:'de-DE', pt:'pt-PT',
+  it:'it-IT', zh:'zh-CN', ja:'ja-JP', ar:'ar-SA',
+  nl:'nl-NL', pl:'pl-PL', cs:'cs-CZ', sv:'sv-SE', da:'da-DK',
+  fi:'fi-FI', el:'el-GR', hu:'hu-HU', ro:'ro-RO', bg:'bg-BG',
+  hr:'hr-HR', sk:'sk-SK', sl:'sl-SI', et:'et-EE', lv:'lv-LV',
+  lt:'lt-LT', mt:'mt-MT', ga:'ga-IE',
+};
+
+let currentLang = localStorage.getItem('seekr_lang') ||
+  (navigator.language || 'en').toLowerCase().slice(0, 2);
+if (!LANGS[currentLang]) currentLang = 'en';
+
+function t(key) { return (LANGS[currentLang] || LANGS.en)[key] || key; }
+
+function applyTranslations() {
+  document.getElementById('hero-tagline').textContent             = t('tagline');
+  document.getElementById('hero-input').placeholder               = t('placeholder');
+  document.getElementById('hero-btn-text').textContent            = t('search');
+  document.getElementById('results-label-hero').textContent       = t('results_label');
+  document.getElementById('loading-prefix').textContent           = t('loading_prefix');
+  document.getElementById('results-input').placeholder            = t('placeholder_results');
+  document.getElementById('results-btn-text').textContent         = t('search');
+  document.getElementById('topbar-admin-link').textContent        = t('admin');
+  document.getElementById('hero-admin-link').textContent          = t('admin_panel');
+  document.getElementById('hero-hint-text').innerHTML =
+    `${escHtml(t('hint_text'))} <a href="/admin">${escHtml(t('hint_link'))}</a> ${escHtml(t('hint_suffix'))}`;
+  document.documentElement.dir = currentLang === 'ar' ? 'rtl' : 'ltr';
+}
+
+function setLang(lang) {
+  currentLang = lang;
+  localStorage.setItem('seekr_lang', lang);
+  applyTranslations();
+  if (recognizer) { try { recognizer.lang = LANG_BCP47[lang] || 'en-US'; } catch(_) {} }
+}
+
+// ── Theme ─────────────────────────────────────────────────────────────────────
+
+const SUN_SVG = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`;
+const MOON_SVG = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
+
+function updateThemeIcons() {
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  document.getElementById('hero-theme-btn').innerHTML   = dark ? SUN_SVG : MOON_SVG;
+  document.getElementById('topbar-theme-btn').innerHTML = dark ? SUN_SVG : MOON_SVG;
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme');
+  const next = current === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('seekr-theme', next);
+  updateThemeIcons();
+}
+
+// ── Microphone / voice input ──────────────────────────────────────────────────
+// Strategy:
+//   1. Try Web Speech API (Chrome/Edge) — shows live interim text as user speaks
+//   2. Fall back to MediaRecorder → POST /api/transcribe → Whisper (Firefox, Brave, etc.)
+//   Click once to start, click again to stop and trigger search.
+
+let micTarget   = null;
+let mediaStream = null;
+let mediaRec    = null;
+let recognizer  = null; // Web Speech API instance (when available)
+
+function getMicBtn(tgt) {
+  return document.getElementById(tgt === 'hero' ? 'hero-mic-btn' : 'results-mic-btn');
+}
+function getInput(tgt) {
+  return document.getElementById(tgt === 'hero' ? 'hero-input' : 'results-input');
+}
+
+function setMicUI(tgt, state) {
+  // state: 'on' | 'processing' | 'off' | 'err'
+  const btn = getMicBtn(tgt);
+  btn.classList.toggle('recording', state === 'on' || state === 'processing');
+  btn.style.borderColor = state === 'err' ? '#ef4444' : '';
+  btn.style.color       = state === 'err' ? '#ef4444' : '';
+  if (state === 'err') setTimeout(() => { btn.style.borderColor = ''; btn.style.color = ''; }, 2800);
+}
+
+function stopMic() {
+  if (recognizer) { try { recognizer.abort(); } catch(_) {} recognizer = null; }
+  if (mediaRec && mediaRec.state !== 'inactive') { try { mediaRec.stop(); } catch(_) {} }
+  mediaRec = null;
+  if (mediaStream) { mediaStream.getTracks().forEach(tr => tr.stop()); mediaStream = null; }
+  if (micTarget) { const inp = getInput(micTarget); delete inp.dataset.speechFinal; setMicUI(micTarget, 'off'); }
+  micTarget = null;
+}
+
+function onTranscript(tgt, text) {
+  stopMic();
+  if (!text.trim()) return;
+  getInput(tgt).value = text;
+  if (tgt === 'hero') doSearch();
+  else doSearchFromResults();
+}
+
+// ─── MediaRecorder → Whisper (server-side fallback) ───────────────────────────
+function startMediaRec(tgt) {
+  if (!mediaStream) { stopMic(); return; }
+  const chunks = [];
+  // Probe supported codecs; Firefox uses ogg, Chrome/Brave use webm
+  const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus'
+             : MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')  ? 'audio/ogg;codecs=opus'
+             : MediaRecorder.isTypeSupported('audio/webm')             ? 'audio/webm'
+             : '';
+  const recOpts = mime ? { mimeType: mime } : {};
+  mediaRec = new MediaRecorder(mediaStream, recOpts);
+  const actualMime = mediaRec.mimeType || mime;
+
+  mediaRec.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+
+  mediaRec.onstop = async () => {
+    const prevTgt = tgt;
+    setMicUI(prevTgt, 'processing');
+    try {
+      const blob = new Blob(chunks, { type: actualMime });
+      const ext  = actualMime.includes('ogg') ? 'ogg' : 'webm';
+      const fd   = new FormData();
+      fd.append('audio', blob, `mic.${ext}`);
+      // Tell Whisper which language to use — avoids mis-detection (e.g. French → Greek)
+      const whisperLang = LANG_BCP47[currentLang]?.split('-')[0] || 'en';
+      fd.append('language', whisperLang);
+      const res  = await fetch('/api/transcribe', { method: 'POST', body: fd });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const { text } = await res.json();
+      onTranscript(prevTgt, text || '');
+    } catch(e) {
+      console.error('[mic] transcribe error:', e);
+      setMicUI(prevTgt, 'err');
+      stopMic();
+    }
+  };
+
+  mediaRec.start();
+  micTarget = tgt;
+  setMicUI(tgt, 'on');
+  // Safety auto-stop after 15 s
+  setTimeout(() => { if (mediaRec && mediaRec.state === 'recording') mediaRec.stop(); }, 15000);
+}
+
+// ─── Web Speech API (live transcription, Chrome/Edge) ─────────────────────────
+// stream is already acquired before this is called, so MediaRecorder fallback is
+// always available if Web Speech fails.
+function startSpeechRec(tgt) {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) return false;
+  try { recognizer = new SR(); } catch(_) { return false; }
+  recognizer.lang = LANG_BCP47[currentLang] || 'en-US';
+  recognizer.continuous = true;
+  recognizer.interimResults = true;
+
+  recognizer.onresult = (e) => {
+    const input = getInput(tgt);
+    let finalPart = input.dataset.speechFinal || '';
+    let interim = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) finalPart += e.results[i][0].transcript;
+      else interim += e.results[i][0].transcript;
+    }
+    input.dataset.speechFinal = finalPart;
+    input.value = finalPart + interim;
+  };
+
+  recognizer.onerror = (e) => {
+    recognizer = null; micTarget = null;
+    const inp = getInput(tgt); delete inp.dataset.speechFinal; inp.value = '';
+    if (e.error === 'not-allowed') {
+      // Permission denied — release stream and show error
+      if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
+      setMicUI(tgt, 'err');
+    } else {
+      // Any other error (network, aborted, no-speech…) — fall back to MediaRecorder
+      if (mediaStream) startMediaRec(tgt);
+      else setMicUI(tgt, 'off');
+    }
+  };
+
+  recognizer.onend = () => {
+    if (!recognizer) return; // handled by second-click or onerror
+    const inp = getInput(tgt);
+    const text = inp.value.trim();
+    delete inp.dataset.speechFinal;
+    recognizer = null; micTarget = null;
+    setMicUI(tgt, 'off');
+    if (text) {
+      // Got live results — clean up stream and search
+      if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
+      if (tgt === 'hero') doSearch(); else doSearchFromResults();
+    } else {
+      // Silence or auto-end with no text — fall back to MediaRecorder
+      if (mediaStream) startMediaRec(tgt);
+    }
+  };
+
+  try {
+    recognizer.start();
+    micTarget = tgt;
+    setMicUI(tgt, 'on');
+    return true;
+  } catch(_) {
+    recognizer = null;
+    return false;
+  }
+}
+
+// ─── Entry point ──────────────────────────────────────────────────────────────
+async function toggleMic(tgt) {
+  if (micTarget === tgt) {
+    // Second click: stop and trigger search with whatever is in the field
+    if (recognizer) {
+      const inp = getInput(tgt);
+      const text = inp.value.trim();
+      delete inp.dataset.speechFinal;
+      recognizer.onend = null; // suppress auto-search
+      try { recognizer.stop(); } catch(_) {}
+      recognizer = null; micTarget = null;
+      if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
+      setMicUI(tgt, 'off');
+      if (text) { if (tgt === 'hero') doSearch(); else doSearchFromResults(); }
+    } else if (mediaRec && mediaRec.state === 'recording') {
+      mediaRec.stop(); // onstop → Whisper → onTranscript
+    } else {
+      stopMic();
+    }
+    return;
+  }
+  stopMic();
+
+  if (!navigator.mediaDevices?.getUserMedia) {
+    alert('Microphone requires HTTPS or localhost.');
+    return;
+  }
+
+  // Acquire mic stream first — needed for MediaRecorder fallback
+  try {
+    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch(e) {
+    setMicUI(tgt, 'err');
+    return;
+  }
+
+  // Try Web Speech API (live text); falls back to MediaRecorder on any failure
+  if (startSpeechRec(tgt)) return;
+
+  // Web Speech not available — use MediaRecorder → Whisper directly
+  startMediaRec(tgt);
+}
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+
+function formatTime(seconds) {
+  const s = Math.floor(seconds);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+  return `${m}:${String(sec).padStart(2,'0')}`;
+}
+
+function scorePercent(score) {
+  return Math.round(Math.max(0, Math.min(1, (score + 1) / 2)) * 100);
+}
+
+function isYouTubeUrl(url) { return /youtube\.com|youtu\.be/.test(url); }
+
+function extractYouTubeId(url) {
+  const m = url.match(/(?:v=|youtu\.be\/|embed\/|shorts\/)([A-Za-z0-9_-]{11})/);
+  return m ? m[1] : null;
+}
+
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── State machine ─────────────────────────────────────────────────────────────
+
+function showHero() {
+  document.getElementById('hero').style.display         = 'flex';
+  document.getElementById('loading').style.display      = 'none';
+  document.getElementById('results-view').style.display = 'none';
+  document.getElementById('hero-ctrl').classList.remove('hidden');
+}
+
+function showLoading(query) {
+  document.getElementById('hero').style.display         = 'none';
+  document.getElementById('loading').style.display      = 'flex';
+  document.getElementById('results-view').style.display = 'none';
+  document.getElementById('hero-ctrl').classList.add('hidden');
+  document.getElementById('loading-prefix').textContent = t('loading_prefix');
+  document.getElementById('loading-query').textContent  = `"${query}"`;
+}
+
+function showResults() {
+  document.getElementById('hero').style.display         = 'none';
+  document.getElementById('loading').style.display      = 'none';
+  document.getElementById('results-view').style.display = 'flex';
+  document.getElementById('hero-ctrl').classList.add('hidden');
+}
+
+function backToHero() {
+  currentVideoUrl = null;
+  currentPlayer   = null;
+  document.getElementById('player-area').innerHTML         = '';
+  document.getElementById('player-info').style.display    = 'none';
+  document.getElementById('player-section').style.display = 'none';
+  document.getElementById('ai-answer-card').style.display = 'none';
+  document.getElementById('sources-section').style.display = 'none';
+  document.getElementById('results-col').style.display    = '';
+  _chatSources = [];
+  activeCard = null;
+  document.getElementById('results-container').innerHTML      = '';
+  document.getElementById('results-header-label').textContent = '';
+  document.getElementById('results-input').value              = '';
+  showHero();
+  document.getElementById('hero-input').focus();
+}
+
+// ── Player ────────────────────────────────────────────────────────────────────
+
+let currentVideoUrl = null;
+let currentPlayer   = null;
+
+function loadPlayer(videoUrl, startSeconds, endSeconds, title, text, query) {
+  const section = document.getElementById('player-section');
+  const area    = document.getElementById('player-area');
+  const info    = document.getElementById('player-info');
+  const titleEl = document.getElementById('player-video-title');
+  const textEl  = document.getElementById('player-segment-text');
+  const queryEl = document.getElementById('player-query-text');
+
+  // Show the player section (above results)
+  section.style.display = '';
+  info.style.display    = 'block';
+  titleEl.textContent   = title || videoUrl;
+  textEl.textContent    = text  || '';
+  if (queryEl && query) queryEl.textContent = query;
+
+  // ── Audio ──────────────────────────────────────────────────────────────────
+  if (/\.(mp3|wav|m4a|ogg|flac|aac|opus|wma)(\?|$)/i.test(videoUrl) || videoUrl.startsWith('/api/local-audio/')) {
+    if (currentVideoUrl === videoUrl && currentPlayer === 'audio') {
+      const audio = area.querySelector('audio');
+      if (audio) { audio.currentTime = startSeconds; audio.play().catch(()=>{}); section.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); return; }
+    }
+    currentVideoUrl = videoUrl;
+    currentPlayer   = 'audio';
+    const ext  = videoUrl.split('?')[0].split('.').pop().toLowerCase();
+    const mime = { mp3:'audio/mpeg', wav:'audio/wav', m4a:'audio/mp4', ogg:'audio/ogg', flac:'audio/flac', aac:'audio/aac', opus:'audio/opus' }[ext] || 'audio/mpeg';
+    area.innerHTML = `<audio controls autoplay style="width:100%;margin:16px 0"><source src="${escHtml(videoUrl)}" type="${mime}"/>Your browser does not support audio.</audio>`;
+    const audio = area.querySelector('audio');
+    audio.addEventListener('loadedmetadata', () => {
+      audio.currentTime = startSeconds;
+      audio.play().catch(()=>{});
+    });
+    section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    return;
+  }
+
+  if (isYouTubeUrl(videoUrl)) {
+    const vid = extractYouTubeId(videoUrl);
+    if (!vid) {
+      area.innerHTML = '<p style="color:#dc2626;padding:16px;font-size:13px;">Could not parse YouTube video ID.</p>';
+      return;
+    }
+    if (currentVideoUrl === videoUrl && currentPlayer === 'youtube') {
+      const iframe = area.querySelector('iframe');
+      if (iframe) {
+        iframe.contentWindow.postMessage(JSON.stringify({ event:'command', func:'seekTo', args:[startSeconds, true] }), '*');
+        iframe.contentWindow.postMessage(JSON.stringify({ event:'command', func:'playVideo', args:[] }), '*');
+        section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        return;
+      }
+    }
+    currentVideoUrl = videoUrl;
+    currentPlayer   = 'youtube';
+    const end = endSeconds ? `&end=${Math.ceil(endSeconds)}` : '';
+    const src = `https://www.youtube.com/embed/${vid}?start=${Math.floor(startSeconds)}${end}&autoplay=1&enablejsapi=1&rel=0`;
+    area.innerHTML = `<iframe src="${escHtml(src)}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+  } else {
+    if (currentVideoUrl === videoUrl && currentPlayer === 'html5') {
+      const video = area.querySelector('video');
+      if (video) { video.currentTime = startSeconds; video.play().catch(()=>{}); attachEndStop(video, endSeconds); return; }
+    }
+    currentVideoUrl = videoUrl;
+    currentPlayer   = 'html5';
+    const ext  = videoUrl.split('?')[0].split('.').pop().toLowerCase();
+    const mime = { mp4:'video/mp4', webm:'video/webm', ogg:'video/ogg', mov:'video/mp4', mkv:'video/x-matroska' }[ext] || 'video/mp4';
+    area.innerHTML = `<video controls autoplay><source src="${videoUrl}" type="${mime}"/>Your browser does not support HTML5 video.</video>`;
+    const video = area.querySelector('video');
+    video.addEventListener('loadedmetadata', () => {
+      // Portrait video: let CSS handle it naturally (no forced aspect ratio)
+      // Nothing extra needed — CSS max-height + transparent bg handles black bars
+      video.currentTime = startSeconds;
+      video.play().catch(()=>{});
+      attachEndStop(video, endSeconds);
+    });
+  }
+  section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function attachEndStop(video, endSeconds) {
+  if (!endSeconds) return;
+  if (video._endStopHandler) video.removeEventListener('timeupdate', video._endStopHandler);
+  video._endStopHandler = () => { if (video.currentTime >= endSeconds) video.pause(); };
+  video.addEventListener('timeupdate', video._endStopHandler);
+}
+
+// ── Search ────────────────────────────────────────────────────────────────────
+
+let activeCard = null;
+
+async function runSearch(query) {
+  if (aiEnabled) { runChatSearch(query); return; }
+  const topK = parseInt(document.getElementById('top-k-select').value, 10);
+  showLoading(query);
+  try {
+    const res = await fetch('/api/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, top_k: topK }),
+    });
+    if (!res.ok) { const err = await res.json().catch(()=>({})); throw new Error(err.detail || `HTTP ${res.status}`); }
+    const data = await res.json();
+    renderResults(data.results, query);
+    showResults();
+    document.getElementById('results-input').value = query;
+  } catch (e) {
+    showResults();
+    document.getElementById('results-input').value = query;
+    document.getElementById('player-section').style.display = 'none';
+    document.getElementById('results-header-label').textContent = '';
+    document.getElementById('results-container').innerHTML = `
+      <div class="state-error">Search failed: ${escHtml(e.message)}</div>
+      <div class="state-empty">
+        <span class="state-empty-icon">⚠️</span>
+        <h3>Something went wrong</h3>
+        <p>Make sure the Seekr server is running and you have videos indexed.</p>
+      </div>`;
+  }
+}
+
+function doSearch() {
+  const q = document.getElementById('hero-input').value.trim();
+  if (!q) return;
+  runSearch(q);
+}
+
+function doSearchFromResults() {
+  const q = document.getElementById('results-input').value.trim();
+  if (!q) return;
+  activeCard = null;
+  currentVideoUrl = null; currentPlayer = null;
+  document.getElementById('player-area').innerHTML            = '';
+  document.getElementById('player-info').style.display       = 'none';
+  document.getElementById('player-section').style.display    = 'none';
+  document.getElementById('ai-answer-card').style.display    = 'none';
+  document.getElementById('sources-section').style.display   = 'none';
+  document.getElementById('results-col').style.display       = '';
+  _chatSources = [];
+  runSearch(q);
+}
+
+// Highlight query words in transcript text (safe, no XSS)
+function highlightTerms(text, query) {
+  const safe = escHtml(text);
+  const words = query.toLowerCase().split(/\s+/).filter(w => w.length >= 3);
+  if (!words.length) return safe;
+  const pattern = new RegExp(
+    `(${words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`,
+    'gi'
+  );
+  return safe.replace(pattern, '<mark>$1</mark>');
+}
+
+function renderResults(results, query) {
+  const container   = document.getElementById('results-container');
+  const headerLabel = document.getElementById('results-header-label');
+
+  activeCard = null;
+  container.innerHTML = '';
+
+  if (!results || results.length === 0) {
+    document.getElementById('player-section').style.display = 'none';
+    headerLabel.textContent = '';
+    container.innerHTML = `
+      <div class="state-empty">
+        <span class="state-empty-icon">🔍</span>
+        <h3>${escHtml(t('no_results_title'))}</h3>
+        <p>${escHtml(t('no_results_body'))} <a href="/admin">${escHtml(t('no_results_link'))}</a>.</p>
+      </div>`;
+    return;
+  }
+
+  headerLabel.textContent = `${results.length} — "${query}"`;
+
+  results.forEach((r, i) => {
+    const card = document.createElement('div');
+    card.className = 'result-card';
+    const pct = scorePercent(r.score);
+    const isPdf   = r.platform === 'pdf';
+    const isAudio = r.platform === 'audio';
+    const ts = isPdf
+      ? (r.start === r.end ? `Page ${r.start}` : `Pages ${r.start}–${r.end}`)
+      : formatTime(r.start);
+    const hint = isPdf
+      ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg> Open PDF`
+      : `<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg> ${escHtml(t('play_from'))}`;
+    card.innerHTML = `
+      <div class="card-header">
+        <div class="card-title">${escHtml(r.video_title || r.video_url)}</div>
+        <div class="card-badges">
+          <span class="badge badge-ts">${escHtml(ts)}</span>
+          <span class="badge badge-score">${pct}%</span>
+        </div>
+      </div>
+      <div class="card-text">${highlightTerms(r.text, query)}</div>
+      <div class="card-play-hint">${hint}</div>`;
+    if (isPdf) {
+      card.style.cursor = 'pointer';
+      card.addEventListener('click', () => {
+        window.open(r.video_url, '_blank', 'noopener');
+      });
+    } else {
+      card.addEventListener('click', () => {
+        if (activeCard) activeCard.classList.remove('active');
+        card.classList.add('active');
+        activeCard = card;
+        loadPlayer(r.video_url, r.start, r.end, r.video_title, r.text, query);
+      });
+      if (i === 0) requestAnimationFrame(() => card.click());
+    }
+    container.appendChild(card);
+  });
+}
+
+// ── AI Chat (RAG) ─────────────────────────────────────────────────────────────
+
+let aiEnabled = false;
+
+function isYouTubeSource(r) {
+  return isYouTubeUrl(r.source_url || r.video_url);
+}
+
+function ytTimecodeUrl(r) {
+  const base = r.source_url || r.video_url;
+  const t    = Math.floor(r.start);
+  // Use youtu.be short link if possible
+  const vid  = extractYouTubeId(base);
+  return vid ? `https://youtu.be/${vid}?t=${t}` : `${base}&t=${t}s`;
+}
+
+function renderSourceCards(sources) {
+  const grid    = document.getElementById('sources-grid');
+  const section = document.getElementById('sources-section');
+  grid.innerHTML = '';
+  if (!sources || !sources.length) { section.style.display = 'none'; return; }
+  section.style.display = '';
+
+  sources.forEach((r, i) => {
+    const isYT   = isYouTubeSource(r);
+    const ts     = formatTime(r.start);
+    const thumb  = r.video_thumbnail
+      ? `<img src="${escHtml(r.video_thumbnail)}" loading="lazy" alt="">`
+      : `<div class="source-thumb-placeholder"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="5,3 19,12 5,21"/></svg></div>`;
+
+    const card = document.createElement('div');
+    card.className = 'source-card';
+    card.id = `src-card-${i + 1}`;
+    card.style.animationDelay = `${i * 0.05}s`;
+    card.innerHTML = `
+      <div class="source-thumb-wrap">
+        ${thumb}
+        <div class="source-card-num">${i + 1}</div>
+      </div>
+      <div class="source-card-body">
+        <div class="source-card-title">${escHtml(r.video_title || r.video_url)}</div>
+        <div class="source-card-meta">
+          <span class="source-ts">${ts}</span>
+          ${r.platform ? `<span class="source-platform-badge">${escHtml(r.platform)}</span>` : ''}
+        </div>
+        ${isYT
+          ? `<a class="source-yt-link" href="${escHtml(ytTimecodeUrl(r))}" target="_blank" rel="noopener">
+               <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+               Watch on YouTube
+             </a>`
+          : r.platform === 'pdf'
+          ? `<a class="source-yt-link" href="${escHtml(r.video_url)}" target="_blank" rel="noopener">
+               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+               Open PDF
+             </a>`
+          : `<div class="source-yt-link" style="cursor:pointer" onclick="playSourceCard(${i})">
+               <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+               Play here
+             </div>`
+        }
+      </div>`;
+
+    if (!isYT) {
+      card.addEventListener('click', e => {
+        if (e.target.closest('a')) return;
+        playSourceCard(i);
+      });
+    }
+    grid.appendChild(card);
+  });
+}
+
+let _chatSources = [];
+
+function playSourceCard(idx) {
+  const r = _chatSources[idx];
+  if (!r) return;
+  // Highlight the card
+  document.querySelectorAll('.source-card').forEach(c => c.classList.remove('active'));
+  const card = document.getElementById(`src-card-${idx + 1}`);
+  if (card) card.classList.add('active');
+  // Load player
+  loadPlayer(r.video_url, r.start, r.end, r.video_title, r.text, document.getElementById('ai-answer-query').textContent);
+}
+
+function highlightCitation(num) {
+  // Scroll to and highlight the nth source card
+  const card = document.getElementById(`src-card-${num}`);
+  if (!card) return;
+  document.querySelectorAll('.source-card').forEach(c => c.classList.remove('active'));
+  card.classList.add('active');
+  card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  // If local video, play it
+  const r = _chatSources[num - 1];
+  if (r && !isYouTubeSource(r)) playSourceCard(num - 1);
+}
+
+function renderAiAnswer(text) {
+  // Replace [N] citations with clickable badges
+  const html = escHtml(text).replace(
+    /\[(\d+)\]/g,
+    (_, n) => `<a class="ai-cite" onclick="highlightCitation(${n})">${n}</a>`
+  );
+  document.getElementById('ai-answer-body').innerHTML = html;
+}
+
+async function runChatSearch(query) {
+  showLoading(query);
+
+  // Reset AI sections
+  const answerCard   = document.getElementById('ai-answer-card');
+  const answerQuery  = document.getElementById('ai-answer-query');
+  const answerBody   = document.getElementById('ai-answer-body');
+  const dot          = document.getElementById('ai-dot');
+  const headerLabel  = document.getElementById('ai-header-label');
+  const sourcesSec   = document.getElementById('sources-section');
+  const playerSec    = document.getElementById('player-section');
+  const resultsCol   = document.getElementById('results-col');
+
+  // Hide non-AI result elements
+  playerSec.style.display  = 'none';
+  resultsCol.style.display = 'none';
+  document.getElementById('results-header-label').textContent = '';
+  document.getElementById('results-container').innerHTML = '';
+
+  answerCard.style.display  = '';
+  sourcesSec.style.display  = 'none';
+  answerQuery.textContent   = query;
+  answerBody.textContent    = '';
+  dot.classList.add('thinking');
+  headerLabel.textContent   = 'Thinking…';
+
+  showResults();
+  document.getElementById('results-input').value = query;
+
+  let accumulated = '';
+  _chatSources = [];
+
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, top_k: 5 }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `HTTP ${res.status}`);
+    }
+
+    const reader  = res.body.getReader();
+    const decoder = new TextDecoder();
+    let   buf     = '';
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop(); // keep incomplete line
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        let evt;
+        try { evt = JSON.parse(line.slice(6)); } catch { continue; }
+
+        if (evt.type === 'sources') {
+          _chatSources = evt.sources || [];
+          renderSourceCards(_chatSources);
+        } else if (evt.type === 'token') {
+          accumulated += evt.text;
+          dot.classList.add('thinking');
+          headerLabel.textContent = 'Answering…';
+          renderAiAnswer(accumulated);
+        } else if (evt.type === 'error') {
+          answerBody.innerHTML = `<span style="color:#dc2626">Error: ${escHtml(evt.text)}</span>`;
+          dot.classList.remove('thinking');
+          headerLabel.textContent = 'Error';
+        } else if (evt.type === 'done') {
+          dot.classList.remove('thinking');
+          headerLabel.textContent = 'AI Answer';
+          renderAiAnswer(accumulated); // final render with citations
+          // Hide source cards not cited in the answer
+          const cited = new Set([...accumulated.matchAll(/\[(\d+)\]/g)].map(m => parseInt(m[1])));
+          document.querySelectorAll('.source-card').forEach(card => {
+            const n = parseInt(card.id.replace('src-card-', ''));
+            if (!cited.has(n)) card.style.display = 'none';
+          });
+          // Hide sources section entirely if nothing was cited
+          if (!cited.size) document.getElementById('sources-section').style.display = 'none';
+        }
+      }
+    }
+  } catch (e) {
+    dot.classList.remove('thinking');
+    headerLabel.textContent = 'Error';
+    answerBody.innerHTML = `<span style="color:#dc2626">Search failed: ${escHtml(e.message)}</span>`;
+  }
+}
+
+// ── Keyboard ──────────────────────────────────────────────────────────────────
+
+document.getElementById('hero-input').addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+document.getElementById('results-input').addEventListener('keydown', e => { if (e.key === 'Enter') doSearchFromResults(); });
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+
+document.getElementById('lang-picker').value = currentLang;
+applyTranslations();
+updateThemeIcons();
+showHero();
+
+(async () => {
+  try {
+    const res = await fetch('/api/status');
+    if (res.ok) {
+      const data = await res.json();
+      if (data.total_segments === 0) document.getElementById('hero-hint').style.display = 'flex';
+
+      // Model badges
+      const embedLabel = data.embedding_provider === 'local'
+        ? `local · ${data.embedding_model}`
+        : data.embedding_model || data.embedding_provider;
+      const badgeEmbed = document.getElementById('badge-embed');
+      if (badgeEmbed && embedLabel) {
+        const isLocal = data.embedding_provider === 'local';
+        badgeEmbed.innerHTML = `<span class="model-badge-dot"></span>${escHtml(embedLabel)}`;
+        badgeEmbed.title = isLocal ? 'Embedding runs locally (no API key needed)' : `Embedding via ${data.embedding_provider}`;
+        document.getElementById('model-badges').style.display = 'flex';
+      }
+      if (data.ai_enabled && data.chat_model) {
+        aiEnabled = true;
+        const badgeChat = document.getElementById('badge-chat');
+        badgeChat.innerHTML = `<span class="model-badge-dot"></span>✦ ${escHtml(data.chat_model)}`;
+        badgeChat.title = 'AI answers powered by this model';
+        badgeChat.style.display = 'inline-flex';
+        document.getElementById('model-badges').style.display = 'flex';
+        // Hide results count options in AI mode
+        const heroOpts = document.getElementById('hero-options');
+        if (heroOpts) heroOpts.style.display = 'none';
+      }
+    }
+  } catch (_) {}
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,2865 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Seekr Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Prevent theme flash -->
+  <script>
+    (function(){
+      const s = localStorage.getItem('seekr-theme');
+      const sys = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', s || sys);
+    })();
+  </script>
+  <style>
+    /* ── Theme tokens ─────────────────────────────────────────────────────── */
+    :root {
+      --bg:          #fafaf8;
+      --surface:     #ffffff;
+      --surface2:    #f4f0eb;
+      --surface3:    #ede8e1;
+      --border:      #e6dfd6;
+      --text:        #303030;
+      --muted:       #787068;
+      --accent:      #f14902;
+      --accent-h:    #d64000;
+      --accent-tint: rgba(241,73,2,.08);
+      --accent-glow: rgba(241,73,2,.25);
+      --success:     #16a34a;
+      --success-bg:  rgba(22,163,74,.08);
+      --error:       #dc2626;
+      --error-bg:    rgba(220,38,38,.08);
+      --warning:     #d97706;
+      --warning-bg:  rgba(217,119,6,.08);
+      --shadow-sm:   0 1px 4px rgba(0,0,0,.06);
+      --shadow-md:   0 4px 18px rgba(0,0,0,.09);
+      --r-xs: 7px; --r-sm: 10px; --r: 14px; --r-lg: 18px;
+      --dur: .2s;
+      --sidebar-w: 270px;
+    }
+    [data-theme="dark"] {
+      --bg:          #111010;
+      --surface:     #1a1918;
+      --surface2:    #232120;
+      --surface3:    #2c2a28;
+      --border:      #2e2c29;
+      --text:        #f0ebe3;
+      --muted:       #8a8278;
+      --accent:      #f14902;
+      --accent-h:    #ff5c1f;
+      --accent-tint: rgba(241,73,2,.11);
+      --accent-glow: rgba(241,73,2,.20);
+      --success:     #22c55e;
+      --success-bg:  rgba(34,197,94,.10);
+      --error:       #ef4444;
+      --error-bg:    rgba(239,68,68,.10);
+      --warning:     #f59e0b;
+      --warning-bg:  rgba(245,158,11,.10);
+      --shadow-sm:   0 1px 4px rgba(0,0,0,.35);
+      --shadow-md:   0 4px 18px rgba(0,0,0,.45);
+    }
+
+    /* ── Reset ─────────────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { height: 100%; }
+    body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Space Grotesk', system-ui, -apple-system, sans-serif;
+      font-size: 14px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      transition: background var(--dur), color var(--dur);
+    }
+
+    /* ── Login gate ──────────────────────────────────────────────────────── */
+    #login-gate {
+      display: none;
+      position: fixed; inset: 0;
+      background: color-mix(in srgb, var(--bg) 90%, transparent);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      z-index: 1000;
+      align-items: center; justify-content: center;
+    }
+
+    .login-card {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--r-lg);
+      padding: 40px 36px;
+      width: 100%; max-width: 360px;
+      text-align: center;
+      box-shadow: var(--shadow-md);
+      animation: fadeUp .3s ease;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .login-logo {
+      width: 52px; height: 52px;
+      background: var(--accent);
+      border-radius: 16px;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 18px;
+      box-shadow: 0 6px 20px var(--accent-glow);
+    }
+
+    .login-card h2 { font-size: 20px; font-weight: 700; margin-bottom: 6px; letter-spacing: -.4px; }
+    .login-card p  { font-size: 13px; color: var(--muted); margin-bottom: 24px; }
+
+    .login-input {
+      width: 100%;
+      background: var(--surface2);
+      border: 1.5px solid var(--border);
+      border-radius: var(--r-sm);
+      padding: 11px 14px;
+      font-size: 14px; font-family: inherit;
+      color: var(--text);
+      outline: none; margin-bottom: 12px;
+      transition: border-color var(--dur), background var(--dur);
+    }
+    .login-input:focus { border-color: var(--accent); }
+
+    .login-error { font-size: 12px; color: var(--error); margin-bottom: 10px; display: none; }
+
+    /* ── App layout ──────────────────────────────────────────────────────── */
+    #app { display: none; flex-direction: column; height: 100%; }
+
+    /* ── Header ──────────────────────────────────────────────────────────── */
+    header {
+      height: 54px;
+      border-bottom: 1px solid var(--border);
+      background: color-mix(in srgb, var(--bg) 85%, transparent);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      display: flex; align-items: center;
+      padding: 0 18px; gap: 10px;
+      flex-shrink: 0;
+      position: sticky; top: 0; z-index: 200;
+      transition: background var(--dur), border-color var(--dur);
+    }
+
+    .logo {
+      display: flex; align-items: center; gap: 9px;
+      font-weight: 700; font-size: 16px; letter-spacing: -.5px;
+      color: var(--text); text-decoration: none;
+      transition: color var(--dur);
+    }
+    .logo:hover { color: var(--accent); }
+
+    .logo-icon {
+      width: 28px; height: 28px;
+      background: var(--accent); border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 3px 10px var(--accent-glow);
+    }
+
+    .header-badge {
+      background: var(--accent-tint);
+      color: var(--accent);
+      border: 1px solid rgba(241,73,2,.2);
+      font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .07em;
+      padding: 2px 9px; border-radius: 999px;
+    }
+
+    .header-right {
+      margin-left: auto;
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    .header-nav a {
+      color: var(--muted); text-decoration: none;
+      font-size: 13px; font-weight: 500;
+      padding: 5px 10px; border-radius: var(--r-xs);
+      transition: color var(--dur), background var(--dur);
+    }
+    .header-nav a:hover { color: var(--accent); background: var(--accent-tint); }
+
+    .lock-btn {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--r-sm);
+      color: var(--muted);
+      font-size: 12px; font-weight: 600; font-family: inherit;
+      padding: 5px 11px;
+      cursor: pointer;
+      display: flex; align-items: center; gap: 5px;
+      transition: border-color var(--dur), color var(--dur);
+    }
+    .lock-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .lock-btn.locked { color: var(--warning); border-color: rgba(217,119,6,.35); }
+
+    .lang-select {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--r-sm);
+      color: var(--text);
+      font-size: 12px; font-weight: 600; font-family: inherit;
+      padding: 5px 9px; cursor: pointer; outline: none;
+      transition: border-color var(--dur), background var(--dur);
+    }
+    .lang-select:focus { border-color: var(--accent); }
+
+    .icon-btn {
+      width: 34px; height: 34px;
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--r-sm);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; color: var(--muted);
+      transition: border-color var(--dur), color var(--dur), transform .12s;
+    }
+    .icon-btn:hover { border-color: var(--accent); color: var(--accent); transform: scale(1.06); }
+    .icon-btn:active { transform: scale(.94); }
+
+    /* ── Body layout ─────────────────────────────────────────────────────── */
+    .body {
+      display: grid;
+      grid-template-columns: var(--sidebar-w) 1fr;
+      flex: 1;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    /* ── Sidebar ─────────────────────────────────────────────────────────── */
+    .sidebar {
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      overflow: hidden;
+      background: var(--surface);
+      transition: background var(--dur), border-color var(--dur);
+    }
+
+    .sidebar-header {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .sidebar-title {
+      font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .09em;
+      color: var(--muted);
+    }
+
+    .sidebar-count {
+      font-size: 11px; color: var(--muted);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      padding: 2px 8px; border-radius: 999px;
+      font-weight: 600;
+    }
+
+    .video-list {
+      flex: 1; overflow-y: auto;
+      padding: 8px;
+      display: flex; flex-direction: column; gap: 3px;
+    }
+
+    .video-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 10px;
+      border-radius: var(--r-sm);
+      cursor: pointer;
+      border: 1.5px solid transparent;
+      position: relative;
+      transition: background var(--dur), border-color var(--dur);
+    }
+    .video-item:hover { background: var(--surface2); }
+    .video-item.active { background: var(--accent-tint); border-color: rgba(241,73,2,.25); }
+
+    .video-thumb {
+      width: 50px; height: 32px;
+      border-radius: 6px;
+      background: var(--surface3);
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden;
+    }
+    .video-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .video-thumb-placeholder { font-size: 14px; color: var(--muted); }
+
+    .video-item-info { flex: 1; min-width: 0; }
+    .video-item-title {
+      font-size: 12px; font-weight: 600; color: var(--text);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      margin-bottom: 2px;
+    }
+    .video-item-meta { font-size: 11px; color: var(--muted); }
+
+    .video-item-del {
+      background: none; border: none; color: var(--muted);
+      cursor: pointer; padding: 3px; border-radius: 5px;
+      flex-shrink: 0; opacity: 0;
+      transition: color var(--dur), opacity var(--dur);
+      font-size: 13px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .video-item:hover .video-item-del { opacity: 1; }
+    .video-item-del:hover { color: var(--error); }
+
+    .sidebar-empty {
+      padding: 32px 16px; text-align: center; color: var(--muted);
+      font-size: 13px; font-weight: 500;
+    }
+
+    /* ── Main ─────────────────────────────────────────────────────────────── */
+    .main {
+      overflow-y: auto;
+      padding: 18px;
+      display: flex; flex-direction: column; gap: 14px;
+      background: var(--bg);
+    }
+
+    /* ── Stats ───────────────────────────────────────────────────────────── */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 10px;
+    }
+
+    .stat-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 14px 16px;
+      transition: background var(--dur), border-color var(--dur);
+    }
+    .stat-label {
+      font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .09em;
+      color: var(--muted); margin-bottom: 5px;
+    }
+    .stat-value { font-size: 28px; font-weight: 700; color: var(--accent); line-height: 1; }
+    .stat-value.neutral { color: var(--text); }
+
+    /* ── Card ─────────────────────────────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 18px;
+      transition: background var(--dur), border-color var(--dur);
+    }
+
+    .card-title {
+      font-size: 14px; font-weight: 700;
+      display: flex; align-items: center; gap: 7px;
+      margin-bottom: 4px; letter-spacing: -.2px;
+    }
+
+    .card-sub {
+      font-size: 12px; color: var(--muted);
+      margin-bottom: 16px; line-height: 1.6;
+    }
+
+    /* ── How-it-works grid ───────────────────────────────────────────────── */
+    .how-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+      margin-bottom: 14px;
+    }
+    @media (max-width: 520px) { .how-grid { grid-template-columns: 1fr; } }
+
+    .how-item {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      padding: 10px 12px;
+      transition: background var(--dur);
+    }
+    .how-item-title {
+      font-size: 11px; font-weight: 700;
+      display: flex; align-items: center; gap: 6px; margin-bottom: 4px;
+    }
+    .how-item-body { font-size: 11px; color: var(--muted); line-height: 1.6; }
+
+    .how-badge {
+      font-size: 10px; font-weight: 700;
+      padding: 2px 8px; border-radius: 999px;
+    }
+    .how-badge-muted  { background: var(--surface3); color: var(--muted); border: 1px solid var(--border); }
+    .how-badge-accent { background: var(--accent-tint); color: var(--accent); border: 1px solid rgba(241,73,2,.2); }
+    .how-badge-ok     { background: var(--success-bg); color: var(--success); border: 1px solid rgba(22,163,74,.2); }
+
+    /* ── Auth hint ───────────────────────────────────────────────────────── */
+    .auth-hint {
+      display: none;
+      background: var(--warning-bg);
+      border: 1px solid rgba(217,119,6,.25);
+      border-radius: var(--r-sm);
+      padding: 9px 12px; margin-bottom: 12px;
+      font-size: 12px; color: var(--warning); line-height: 1.6;
+    }
+
+    /* ── URL textarea ────────────────────────────────────────────────────── */
+    .url-textarea {
+      width: 100%;
+      background: var(--surface2);
+      border: 1.5px solid var(--border);
+      border-radius: var(--r-sm);
+      padding: 10px 13px;
+      font-size: 12px; color: var(--text);
+      font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
+      resize: vertical; min-height: 76px; line-height: 1.8;
+      outline: none; margin-bottom: 8px;
+      transition: border-color var(--dur), background var(--dur);
+    }
+    .url-textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-tint); }
+    .url-textarea::placeholder { color: var(--muted); font-family: 'Space Grotesk', sans-serif; }
+
+    .url-hint { font-size: 11px; color: var(--muted); margin-bottom: 12px; font-weight: 500; }
+
+    .action-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    /* ── Buttons ─────────────────────────────────────────────────────────── */
+    .btn {
+      border: none; border-radius: var(--r-sm);
+      padding: 9px 18px; font-size: 13px; font-weight: 700;
+      font-family: inherit; cursor: pointer;
+      transition: background var(--dur), transform .1s, box-shadow var(--dur);
+      display: inline-flex; align-items: center; gap: 5px;
+      white-space: nowrap;
+    }
+    .btn:active { transform: scale(.97); }
+    .btn:disabled { opacity: .4; cursor: not-allowed; pointer-events: none; }
+
+    .btn-primary {
+      background: var(--accent); color: #fff;
+      box-shadow: 0 2px 10px var(--accent-glow);
+    }
+    .btn-primary:hover { background: var(--accent-h); box-shadow: 0 4px 18px var(--accent-glow); }
+
+    .btn-secondary {
+      background: var(--surface2); color: var(--text);
+      border: 1.5px solid var(--border);
+    }
+    .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+    .btn-danger {
+      background: var(--error-bg); color: var(--error);
+      border: 1px solid rgba(220,38,38,.25);
+    }
+    .btn-danger:hover { background: rgba(220,38,38,.15); }
+
+    .btn-sm { padding: 5px 12px; font-size: 12px; }
+
+    /* ── Source tabs ─────────────────────────────────────────────────────── */
+    .src-tabs {
+      display: flex; gap: 2px;
+      background: var(--surface2); border-radius: var(--r-sm);
+      padding: 3px; margin-bottom: 14px;
+    }
+    .src-tab {
+      flex: 1; padding: 6px 10px;
+      border: none; border-radius: calc(var(--r-sm) - 2px);
+      background: transparent; color: var(--muted);
+      font-size: 12px; font-weight: 600; font-family: inherit;
+      cursor: pointer; transition: background var(--dur), color var(--dur);
+    }
+    .src-tab.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); }
+    .src-tab:hover:not(.active) { color: var(--text); }
+
+    /* ── File drop zone ──────────────────────────────────────────────────── */
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--r);
+      padding: 32px 16px;
+      text-align: center;
+      cursor: pointer;
+      color: var(--muted);
+      transition: border-color var(--dur), background var(--dur), color var(--dur);
+    }
+    .drop-zone:hover, .drop-zone.drag-over {
+      border-color: var(--accent);
+      background: var(--accent-tint);
+      color: var(--accent);
+    }
+
+    /* ── Extracted section ───────────────────────────────────────────────── */
+    .extracted-section { display: none; margin-top: 16px; }
+
+    .extracted-label {
+      font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .09em;
+      color: var(--muted); margin-bottom: 8px;
+    }
+
+    .url-list { display: flex; flex-direction: column; gap: 6px; }
+
+    .url-item {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      padding: 8px 10px;
+      display: flex; align-items: center; gap: 10px;
+      transition: background var(--dur);
+    }
+    .url-item-thumb {
+      width: 72px; height: 40px; object-fit: cover;
+      border-radius: 5px; flex-shrink: 0;
+      background: var(--border);
+    }
+    .url-item-thumb-placeholder {
+      width: 72px; height: 40px; flex-shrink: 0;
+      border-radius: 5px; background: var(--border);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--muted);
+    }
+    .url-item-info {
+      flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;
+    }
+    .url-item-title {
+      font-size: 12px; font-weight: 500; color: var(--text);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .url-item-meta {
+      font-size: 11px; color: var(--muted);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .url-item-status {
+      font-size: 11px; color: var(--muted);
+      min-width: 58px; text-align: right; font-weight: 600;
+    }
+    .url-item-status.done    { color: var(--success); }
+    .url-item-status.error   { color: var(--error); }
+    .url-item-status.running { color: var(--accent); }
+
+    .index-all-row {
+      margin-top: 12px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+
+    /* ── Segment editor ──────────────────────────────────────────────────── */
+    #segment-section { display: none; }
+
+    .segment-video-header {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
+    }
+    .segment-video-title { font-size: 14px; font-weight: 700; flex: 1; letter-spacing: -.2px; }
+    .segment-count-badge {
+      font-size: 11px; color: var(--muted);
+      background: var(--surface2); border: 1px solid var(--border);
+      padding: 2px 9px; border-radius: 999px; font-weight: 600;
+    }
+
+    .segment-table-wrap { overflow-x: auto; }
+
+    .segment-table { width: 100%; border-collapse: collapse; }
+    .segment-table th {
+      font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .08em; color: var(--muted);
+      border-bottom: 1px solid var(--border);
+      padding: 7px 10px; text-align: left;
+    }
+    .segment-table td {
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle; font-size: 12px;
+    }
+    .segment-table tr:last-child td { border-bottom: none; }
+    .segment-table tr:hover td { background: var(--surface2); }
+
+    .seg-ts {
+      font-family: 'SF Mono', Consolas, monospace; font-size: 11px;
+      color: var(--accent); white-space: nowrap; font-weight: 600;
+    }
+    .seg-text {
+      color: var(--muted); line-height: 1.5;
+      max-width: 380px;
+      display: -webkit-box; -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .seg-actions { display: flex; gap: 4px; white-space: nowrap; }
+
+    /* ── Edit dialog ─────────────────────────────────────────────────────── */
+    dialog {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--r-lg);
+      color: var(--text);
+      padding: 24px;
+      width: 100%; max-width: 520px;
+      box-shadow: var(--shadow-md);
+    }
+    dialog::backdrop { background: rgba(0,0,0,.5); backdrop-filter: blur(4px); }
+
+    .dialog-title { font-size: 16px; font-weight: 700; margin-bottom: 18px; letter-spacing: -.3px; }
+
+    .dialog-field { margin-bottom: 14px; }
+    .dialog-label {
+      font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .07em;
+      color: var(--muted); margin-bottom: 5px;
+    }
+    .dialog-textarea {
+      width: 100%; background: var(--surface2); border: 1.5px solid var(--border);
+      border-radius: var(--r-sm); padding: 10px 12px;
+      font-size: 13px; font-family: inherit; color: var(--text);
+      resize: vertical; min-height: 96px; outline: none;
+      transition: border-color var(--dur);
+    }
+    .dialog-textarea:focus { border-color: var(--accent); }
+
+    .dialog-time-row { display: flex; gap: 12px; }
+    .dialog-time-row .dialog-field { flex: 1; }
+
+    .dialog-input {
+      width: 100%; background: var(--surface2); border: 1.5px solid var(--border);
+      border-radius: var(--r-sm); padding: 8px 12px;
+      font-size: 13px; font-family: 'SF Mono', monospace;
+      color: var(--text); outline: none;
+      transition: border-color var(--dur);
+    }
+    .dialog-input:focus { border-color: var(--accent); }
+
+    .dialog-check {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 12px; color: var(--muted); cursor: pointer;
+    }
+    .dialog-check input { cursor: pointer; accent-color: var(--accent); }
+
+    .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+
+    /* ── Log terminal ────────────────────────────────────────────────────── */
+    .log-section { display: none; }
+
+    .log-header {
+      display: flex; align-items: center;
+      justify-content: space-between; margin-bottom: 10px;
+    }
+    .log-title { font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+
+    .log-terminal {
+      background: #0a0908;
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      padding: 12px;
+      font-family: 'SF Mono', Consolas, monospace;
+      font-size: 11px; line-height: 1.8;
+      color: #9a9080;
+      max-height: 220px; overflow-y: auto;
+      white-space: pre-wrap; word-break: break-all;
+    }
+    [data-theme="light"] .log-terminal { background: #1a1614; }
+    .log-terminal .lt { color: #4a3f38; }
+    .log-terminal .li { color: #9a9080; }
+    .log-terminal .lo { color: #22c55e; }
+    .log-terminal .le { color: #ef4444; }
+    .log-terminal .lw { color: #f59e0b; }
+    .log-terminal .lp { color: var(--accent); font-weight: 600; }
+
+    /* ── Misc ────────────────────────────────────────────────────────────── */
+    hr { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
+
+    .spinner {
+      width: 12px; height: 12px;
+      border: 2px solid rgba(255,255,255,.25);
+      border-top-color: #fff; border-radius: 50%;
+      animation: spin .7s linear infinite; display: inline-block;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+    /* ── Responsive ──────────────────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      :root { --sidebar-w: 220px; }
+    }
+    @media (max-width: 600px) {
+      .body { grid-template-columns: 1fr; }
+      .sidebar {
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+        max-height: 220px;
+      }
+    }
+    @media (max-width: 480px) {
+      header { padding: 0 12px; gap: 8px; }
+      .header-right .header-nav { display: none; }
+    }
+    /* ── Source type toggle ──────────────────────────────────────────────────── */
+    .src-type-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+    .src-type-label {
+      font-size: 12px; font-weight: 700; color: var(--muted);
+      margin-right: 4px;
+    }
+    .src-type-opt {
+      display: flex; align-items: center; gap: 5px;
+      background: var(--surface2);
+      border: 1.5px solid var(--border);
+      border-radius: var(--r-sm);
+      padding: 5px 12px;
+      cursor: pointer;
+      font-size: 12px; font-weight: 600;
+      transition: border-color var(--dur), background var(--dur);
+    }
+    .src-type-opt:has(input:checked) {
+      border-color: var(--accent);
+      background: var(--accent-tint);
+      color: var(--accent);
+    }
+    .src-type-opt input { display: none; }
+    .src-type-note { font-size: 11px; color: var(--muted); font-weight: 400; margin-left: 3px; }
+
+    /* ── Settings form ───────────────────────────────────────────────────────── */
+    .settings-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px 20px;
+      margin-bottom: 16px;
+    }
+    @media (max-width: 700px) { .settings-grid { grid-template-columns: 1fr; } }
+
+    .settings-group {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      padding: 14px 16px;
+    }
+    .settings-group-title {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .07em; color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    .field-row { display: flex; flex-direction: column; gap: 3px; margin-bottom: 10px; }
+    .field-row:last-child { margin-bottom: 0; }
+    .field-label {
+      font-size: 11px; font-weight: 600; color: var(--muted);
+      display: flex; align-items: center; gap: 5px;
+    }
+    .field-restart {
+      font-size: 9px; font-weight: 700; text-transform: uppercase;
+      background: rgba(251,191,36,.18); color: #b45309;
+      border: 1px solid rgba(251,191,36,.3);
+      border-radius: 3px; padding: 0 4px; letter-spacing: .04em;
+    }
+    [data-theme="dark"] .field-restart { color: #fcd34d; background: rgba(251,191,36,.12); }
+    .field-input {
+      width: 100%; background: var(--surface); border: 1.5px solid var(--border);
+      border-radius: var(--r-xs); padding: 7px 10px;
+      font-size: 12px; font-family: 'Space Grotesk', sans-serif;
+      color: var(--text); outline: none;
+      transition: border-color var(--dur);
+    }
+    .field-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-tint); }
+    .field-select {
+      width: 100%; background: var(--surface); border: 1.5px solid var(--border);
+      border-radius: var(--r-xs); padding: 7px 10px;
+      font-size: 12px; font-family: 'Space Grotesk', sans-serif;
+      color: var(--text); outline: none; cursor: pointer;
+      transition: border-color var(--dur);
+    }
+    .field-select:focus { border-color: var(--accent); }
+
+    .settings-restart-notice {
+      display: none;
+      background: rgba(251,191,36,.12); border: 1px solid rgba(251,191,36,.3);
+      border-radius: var(--r-xs); padding: 8px 12px;
+      font-size: 12px; font-weight: 600; color: #b45309;
+      margin-bottom: 12px;
+    }
+    [data-theme="dark"] .settings-restart-notice { color: #fcd34d; }
+    .settings-restart-notice.visible { display: block; }
+  </style>
+</head>
+<body>
+
+<!-- ── Login gate ──────────────────────────────────────────────────────────── -->
+<div id="login-gate">
+  <div class="login-card">
+    <div class="login-logo">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+      </svg>
+    </div>
+    <h2 data-i18n="login_title">Admin Access</h2>
+    <p data-i18n="login_sub">Enter the admin password to continue.</p>
+    <input id="login-input" class="login-input" type="password" data-i18n-placeholder="login_placeholder" autocomplete="current-password" />
+    <div id="login-error" class="login-error" data-i18n="login_error">Wrong password. Try again.</div>
+    <button class="btn btn-primary" style="width:100%;" onclick="submitLogin()" data-i18n="login_btn">Unlock</button>
+  </div>
+</div>
+
+<!-- ── Edit segment dialog ─────────────────────────────────────────────────── -->
+<dialog id="edit-dialog">
+  <div class="dialog-title" data-i18n="edit_title">Edit Segment</div>
+  <div class="dialog-field">
+    <div class="dialog-label" data-i18n="edit_label_text">Transcript</div>
+    <textarea id="edit-text" class="dialog-textarea"></textarea>
+  </div>
+  <div class="dialog-time-row">
+    <div class="dialog-field">
+      <div class="dialog-label" data-i18n="edit_label_start">Start (seconds)</div>
+      <input id="edit-start" class="dialog-input" type="number" step="0.1" min="0" />
+    </div>
+    <div class="dialog-field">
+      <div class="dialog-label" data-i18n="edit_label_end">End (seconds)</div>
+      <input id="edit-end" class="dialog-input" type="number" step="0.1" min="0" />
+    </div>
+  </div>
+  <label class="dialog-check">
+    <input id="edit-reembed" type="checkbox" />
+    <span data-i18n="edit_reembed">Re-embed text (updates search relevance for this segment)</span>
+  </label>
+  <div class="dialog-actions">
+    <button class="btn btn-secondary" onclick="document.getElementById('edit-dialog').close()" data-i18n="btn_cancel">Cancel</button>
+    <button class="btn btn-primary" id="edit-save-btn" onclick="saveSegment()" data-i18n="btn_save">Save</button>
+  </div>
+</dialog>
+
+<!-- ── Main app ────────────────────────────────────────────────────────────── -->
+<div id="app">
+  <header>
+    <a class="logo" href="/">
+      <div class="logo-icon">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+      </div>
+      Seekr
+    </a>
+    <span class="header-badge" data-i18n="admin_badge">Admin</span>
+    <div class="header-right">
+      <button class="lock-btn" id="lock-btn" onclick="toggleLockInfo()">
+        <span id="lock-icon">🔓</span>
+        <span id="lock-label" data-i18n="lock_open">Open</span>
+      </button>
+      <nav class="header-nav">
+        <a href="/" data-i18n="nav_search">Search</a>
+      </nav>
+      <select class="lang-select" id="lang-select" onchange="switchLang(this.value)">
+        <option value="en">EN</option>
+        <option value="fr">FR</option>
+        <option value="es">ES</option>
+        <option value="de">DE</option>
+        <option value="pt">PT</option>
+        <option value="it">IT</option>
+        <option value="zh">中文</option>
+        <option value="ja">日本語</option>
+        <option value="ar">AR</option>
+        <option value="nl">NL</option>
+        <option value="pl">PL</option>
+        <option value="cs">CS</option>
+        <option value="sv">SV</option>
+        <option value="da">DA</option>
+        <option value="fi">FI</option>
+        <option value="el">EL</option>
+        <option value="hu">HU</option>
+        <option value="ro">RO</option>
+        <option value="bg">BG</option>
+        <option value="hr">HR</option>
+        <option value="sk">SK</option>
+        <option value="sl">SL</option>
+        <option value="et">ET</option>
+        <option value="lv">LV</option>
+        <option value="lt">LT</option>
+        <option value="mt">MT</option>
+        <option value="ga">GA</option>
+      </select>
+      <button class="icon-btn" id="theme-btn" onclick="toggleTheme()" title="Toggle theme"></button>
+    </div>
+  </header>
+
+  <div class="body">
+    <!-- Left sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <span class="sidebar-title" data-i18n="library_title">Video Library</span>
+        <span class="sidebar-count" id="sidebar-count">0</span>
+      </div>
+      <div class="video-list" id="video-list">
+        <div class="sidebar-empty" data-i18n="library_empty">No videos indexed yet.</div>
+      </div>
+    </aside>
+
+    <!-- Main area -->
+    <div class="main" id="main-area">
+
+      <!-- Stats -->
+      <div class="stats-row">
+        <div class="stat-box">
+          <div class="stat-label" data-i18n="stat_segments">Segments</div>
+          <div class="stat-value" id="stat-segments">—</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label" data-i18n="stat_videos">Sources</div>
+          <div class="stat-value neutral" id="stat-videos">—</div>
+        </div>
+        <div class="stat-box" style="display:flex;align-items:center;justify-content:flex-end;gap:8px;">
+          <button class="btn btn-sm" style="border-color:var(--border);color:var(--muted)" onclick="cleanupMedia()" title="Delete downloaded audio/video files from disk">🗑 Clean media</button>
+          <button class="btn btn-danger btn-sm" onclick="resetIndex()" data-i18n="btn_reset_index">Reset Index</button>
+        </div>
+      </div>
+
+      <!-- Add source card -->
+      <div class="card" id="add-source-card">
+        <div class="card-title">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
+          </svg>
+          Add Source
+        </div>
+
+        <!-- Input tabs -->
+        <div class="src-tabs">
+          <button class="src-tab active" id="tab-url" onclick="switchTab('url')">Link / URL</button>
+          <button class="src-tab" id="tab-file" onclick="switchTab('file')">Upload file</button>
+        </div>
+
+        <!-- URL panel -->
+        <div id="panel-url">
+          <div id="auth-hint" class="auth-hint" style="margin-bottom:10px;">
+            <strong data-i18n="auth_hint_label">Authentication required:</strong>
+            <span data-i18n="auth_hint_body"> LinkedIn, Instagram, and TikTok may need login. Set <code>cookies_from_browser: firefox</code> in <code>config.yaml</code>.</span>
+          </div>
+          <div class="src-type-row">
+            <span class="src-type-label">Mode:</span>
+            <label class="src-type-opt">
+              <input type="radio" name="src-type" value="audio" checked id="type-audio">
+              Audio only <span class="src-type-note">(faster, iframe player)</span>
+            </label>
+            <label class="src-type-opt">
+              <input type="radio" name="src-type" value="video" id="type-video">
+              Video <span class="src-type-note">(MP4 download, in-app player)</span>
+            </label>
+            <span id="src-type-social-note" class="src-type-note" style="display:none;color:var(--accent)">⚠️ LinkedIn/Instagram/TikTok always download full video</span>
+          </div>
+          <textarea id="source-urls" class="url-textarea" autocomplete="off" spellcheck="false" data-i18n-placeholder="url_placeholder"></textarea>
+          <div class="url-hint">One URL per line &middot; YouTube, LinkedIn, Instagram, TikTok, playlists, direct MP4/audio/PDF links</div>
+          <div class="action-row">
+            <button class="btn btn-secondary" id="extract-btn" onclick="extractVideos()">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              <span data-i18n="btn_extract">Extract</span>
+            </button>
+            <button class="btn btn-primary" id="index-direct-btn" onclick="indexDirectUrls()">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+              <span data-i18n="btn_index_now">Index Now</span>
+            </button>
+          </div>
+          <div class="extracted-section" id="extracted-section">
+            <hr />
+            <div class="extracted-label" id="extracted-label"></div>
+            <div class="url-list" id="url-list"></div>
+            <div class="index-all-row">
+              <span id="index-all-status" style="font-size:12px;color:var(--muted);font-weight:600;"></span>
+              <button class="btn btn-primary btn-sm" id="index-all-btn" onclick="indexAll()">
+                <span data-i18n="btn_index_all">Index All</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- File upload panel -->
+        <div id="panel-file" style="display:none">
+          <div id="drop-zone" class="drop-zone"
+               onclick="document.getElementById('file-input').click()"
+               ondragover="event.preventDefault();this.classList.add('drag-over')"
+               ondragleave="this.classList.remove('drag-over')"
+               ondrop="handleFileDrop(event)">
+            <input type="file" id="file-input" multiple
+                   accept=".pdf,.mp3,.wav,.m4a,.ogg,.flac,.aac,.opus"
+                   style="display:none" onchange="handleFileSelect(this)">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin:0 auto;display:block">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            <div style="font-size:13px;font-weight:600;margin-top:10px;">Drop file here or click to browse</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px;">PDF &middot; MP3 &middot; WAV &middot; M4A &middot; OGG &middot; FLAC</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Segment editor -->
+      <div class="card" id="segment-section">
+        <div class="card-title">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>
+          </svg>
+          <span data-i18n="seg_editor_title">Segment Editor</span>
+        </div>
+        <div class="segment-video-header">
+          <div class="segment-video-title" id="seg-video-title"></div>
+          <span class="segment-count-badge" id="seg-count-badge"></span>
+          <button class="btn btn-secondary btn-sm" onclick="closeSegmentEditor()" data-i18n="btn_close">Close</button>
+        </div>
+        <div class="card-sub" data-i18n="seg_editor_sub">Edit transcript text or timestamps. Deleting a segment removes it from search results.</div>
+        <div class="segment-table-wrap">
+          <table class="segment-table">
+            <thead>
+              <tr>
+                <th data-i18n="seg_col_time">Time</th>
+                <th data-i18n="seg_col_text">Transcript</th>
+                <th data-i18n="seg_col_actions">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="segment-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Log -->
+      <div class="card log-section" id="log-section">
+        <div class="log-header">
+          <div class="log-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>
+            </svg>
+            <span data-i18n="indexing_log">Indexing Log</span>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="clearLog()" data-i18n="btn_clear">Clear</button>
+        </div>
+        <div class="log-terminal" id="log-terminal"></div>
+      </div>
+
+      <!-- Settings card -->
+      <div class="card" id="settings-card">
+        <div class="card-title">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+          <span>Settings</span>
+        </div>
+        <div class="card-sub">Configure models and API keys. Changes marked <span class="field-restart">restart</span> take effect after restarting the server.</div>
+
+        <div id="settings-restart-notice" class="settings-restart-notice">
+          ⚠️ Some changes require a server restart to take effect.
+        </div>
+
+        <div class="settings-grid">
+
+          <!-- AI & Chat -->
+          <div class="settings-group">
+            <div class="settings-group-title">✦ AI Chat Model</div>
+            <div class="field-row">
+              <label class="field-label" for="s-chat-model">
+                Model name
+                <span class="field-restart">restart not needed</span>
+              </label>
+              <input id="s-chat-model" class="field-input" placeholder="e.g. gpt-4o-mini or gemini-2.0-flash (empty = disabled)">
+            </div>
+          </div>
+
+          <!-- Embeddings -->
+          <div class="settings-group">
+            <div class="settings-group-title">⬡ Embeddings</div>
+            <div class="field-row">
+              <label class="field-label" for="s-embedding-provider">
+                Provider <span class="field-restart">restart</span>
+              </label>
+              <select id="s-embedding-provider" class="field-select">
+                <option value="openai">OpenAI</option>
+                <option value="gemini">Gemini</option>
+                <option value="local">Local (no API key)</option>
+              </select>
+            </div>
+            <div class="field-row" id="s-local-model-row">
+              <label class="field-label" for="s-local-model">
+                Local model <span class="field-restart">restart</span>
+              </label>
+              <input id="s-local-model" class="field-input" placeholder="e.g. all-MiniLM-L6-v2">
+            </div>
+          </div>
+
+          <!-- Transcription -->
+          <div class="settings-group">
+            <div class="settings-group-title">🎙 Transcription (Whisper)</div>
+            <div class="field-row">
+              <label class="field-label" for="s-whisper-model">
+                Whisper model <span class="field-restart">restart</span>
+              </label>
+              <select id="s-whisper-model" class="field-select">
+                <option value="tiny">tiny — fastest, least accurate</option>
+                <option value="base">base — good balance</option>
+                <option value="small">small</option>
+                <option value="medium">medium</option>
+                <option value="large">large — slowest, most accurate</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Search -->
+          <div class="settings-group">
+            <div class="settings-group-title">🔍 Search</div>
+            <div class="field-row">
+              <label class="field-label" for="s-top-k">Default results (top-k)</label>
+              <input id="s-top-k" class="field-input" type="number" min="1" max="20">
+            </div>
+            <div class="field-row">
+              <label class="field-label" for="s-chunk-duration">
+                Chunk duration (s) <span class="field-restart">restart</span>
+                <span style="color:var(--muted);font-weight:400">— re-index needed after change</span>
+              </label>
+              <input id="s-chunk-duration" class="field-input" type="number" min="5" max="600">
+            </div>
+          </div>
+
+          <!-- API Keys -->
+          <div class="settings-group" style="grid-column:1/-1">
+            <div class="settings-group-title">🔑 API Keys</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 20px;">
+              <div class="field-row">
+                <label class="field-label" for="s-openai-key">OpenAI API key</label>
+                <input id="s-openai-key" class="field-input" type="password" placeholder="sk-… (leave blank to keep current)">
+              </div>
+              <div class="field-row">
+                <label class="field-label" for="s-gemini-key">Gemini API key</label>
+                <input id="s-gemini-key" class="field-input" type="password" placeholder="leave blank to keep current">
+              </div>
+              <div class="field-row">
+                <label class="field-label" for="s-cookies-browser">
+                  Cookies from browser <span class="field-restart">restart</span>
+                </label>
+                <input id="s-cookies-browser" class="field-input" placeholder="e.g. firefox, chrome (empty = disabled)">
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /settings-grid -->
+
+        <!-- Vocabulary -->
+        <div class="field-row" style="margin-top:16px;flex-direction:column;align-items:flex-start;gap:6px;">
+          <label class="field-label" for="s-vocabulary" style="font-size:12px;">
+            Transcription vocabulary
+            <span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:4px;">— proper names and terms for Whisper to recognise</span>
+          </label>
+          <textarea id="s-vocabulary" class="url-textarea" rows="4" autocomplete="off" spellcheck="false"
+                    style="font-size:13px;min-height:80px"
+                    placeholder="One name per line, e.g.&#10;Alice&#10;Anthropic&#10;GPT-4&#10;Lionel Messi"></textarea>
+          <div style="font-size:11px;color:var(--muted)">These are fed to Whisper as context hints, helping it spell unusual names correctly. No restart needed.</div>
+        </div>
+
+        <div class="action-row">
+          <button class="btn btn-primary" id="settings-save-btn" onclick="saveSettings()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            Save settings
+          </button>
+        </div>
+      </div>
+
+    </div><!-- /main -->
+  </div><!-- /body -->
+</div><!-- /app -->
+
+<script>
+// ── Theme ─────────────────────────────────────────────────────────────────────
+
+const SUN_SVG  = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`;
+const MOON_SVG = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
+
+function updateThemeIcon() {
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const btn = document.getElementById('theme-btn');
+  if (btn) btn.innerHTML = dark ? SUN_SVG : MOON_SVG;
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme');
+  const next = current === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('seekr-theme', next);
+  updateThemeIcon();
+}
+
+// ── i18n ─────────────────────────────────────────────────────────────────────
+const TRANSLATIONS = {
+  en: {
+    admin_badge:'Admin', nav_search:'Search',
+    login_title:'Admin Access', login_sub:'Enter the admin password to continue.',
+    login_placeholder:'Password', login_error:'Wrong password. Try again.', login_btn:'Unlock',
+    lock_open:'Open', lock_locked:'Locked',
+    library_title:'Video Library', library_empty:'No videos indexed yet.',
+    stat_segments:'Segments', stat_videos:'Sources',
+    add_source:'Add Video Source',
+    add_source_sub:'Supports YouTube, LinkedIn, Instagram, TikTok, playlists, channels, and direct MP4/WebM links.',
+    how_extract_title:'For playlists & channels',
+    how_extract_body:'Lists all videos at the URL so you can choose which to index. Nothing is downloaded yet.',
+    how_index_title:'For individual videos',
+    how_index_body:'Downloads audio, transcribes with Whisper, and stores in the search index. Paste multiple URLs for batch indexing.',
+    how_index_all_title:'After extracting',
+    how_index_all_body:'Appears after extraction. Indexes every discovered video one by one with live progress in the log.',
+    auth_hint_label:'Authentication required:',
+    auth_hint_body:' LinkedIn, Instagram, and TikTok may need login. Set cookies_from_browser: firefox in config.yaml.',
+    url_placeholder:'https://www.youtube.com/watch?v=…\nhttps://www.tiktok.com/@user/video/…',
+    url_hint:'One URL per line. Paste multiple URLs to index them all at once.',
+    btn_extract:'Extract', btn_index_now:'Index Now', btn_index_all:'Index All',
+    btn_clear:'Clear', btn_cancel:'Cancel', btn_save:'Save', btn_close:'Close',
+    seg_editor_title:'Segment Editor',
+    seg_editor_sub:'Edit transcript text or timestamps. Deleting a segment removes it from search results.',
+    seg_col_time:'Time', seg_col_text:'Transcript', seg_col_actions:'Actions',
+    edit_title:'Edit Segment', edit_label_text:'Transcript',
+    edit_label_start:'Start (seconds)', edit_label_end:'End (seconds)',
+    edit_reembed:'Re-embed text (updates search relevance for this segment)',
+    indexing_log:'Indexing Log',
+    found_n: n => `Found ${n} video${n!==1?'s':''}`,
+    indexing_progress: (i,n) => `Indexing ${i} / ${n}…`,
+    all_processed: n => `All ${n} processed.`,
+    confirm_del_video:'Delete this video and all its segments from the index?',
+    confirm_del_seg:'Delete this segment from the index?',
+    btn_reset_index:'Reset Index', confirm_reset_index:'Delete ALL indexed videos and data? This cannot be undone.', reset_index_done:'Index reset. All data cleared.',
+    status_running:'Running…', status_done:'Done', status_error:'Error',
+    status_exists:'Exists', status_indexed:'Indexed',
+    seg_n: n => `${n} segment${n!==1?'s':''}`,
+    err_no_url:'Please enter at least one URL.',
+  },
+  fr: {
+    admin_badge:'Admin', nav_search:'Rechercher',
+    login_title:'Accès Admin', login_sub:'Entrez le mot de passe administrateur.',
+    login_placeholder:'Mot de passe', login_error:'Mauvais mot de passe.', login_btn:'Déverrouiller',
+    lock_open:'Ouvert', lock_locked:'Verrouillé',
+    library_title:'Bibliothèque', library_empty:'Aucune vidéo indexée.',
+    stat_segments:'Segments', stat_videos:'Sources',
+    add_source:'Ajouter une source',
+    add_source_sub:'Supporte YouTube, LinkedIn, Instagram, TikTok, playlists, chaînes et liens directs.',
+    how_extract_title:'Pour playlists & chaînes',
+    how_extract_body:'Liste toutes les vidéos de l\'URL pour choisir lesquelles indexer. Rien n\'est téléchargé.',
+    how_index_title:'Pour vidéos individuelles',
+    how_index_body:'Télécharge l\'audio, transcrit avec Whisper et stocke dans l\'index. Collez plusieurs URLs.',
+    how_index_all_title:'Après extraction',
+    how_index_all_body:'Indexe chaque vidéo découverte avec suivi en direct.',
+    auth_hint_label:'Authentification requise :',
+    auth_hint_body:' LinkedIn, Instagram et TikTok nécessitent une connexion. Définissez cookies_from_browser dans config.yaml.',
+    url_placeholder:'https://www.youtube.com/watch?v=…',
+    url_hint:'Une URL par ligne. Collez plusieurs URLs pour tout indexer d\'un coup.',
+    btn_extract:'Extraire', btn_index_now:'Indexer', btn_index_all:'Tout indexer',
+    btn_clear:'Effacer', btn_cancel:'Annuler', btn_save:'Enregistrer', btn_close:'Fermer',
+    seg_editor_title:'Éditeur de segments',
+    seg_editor_sub:'Modifiez le texte ou les horodatages. Supprimer un segment le retire des résultats.',
+    seg_col_time:'Temps', seg_col_text:'Transcription', seg_col_actions:'Actions',
+    edit_title:'Modifier le segment', edit_label_text:'Transcription',
+    edit_label_start:'Début (secondes)', edit_label_end:'Fin (secondes)',
+    edit_reembed:'Ré-encoder le texte (met à jour la pertinence de recherche)',
+    indexing_log:'Journal d\'indexation',
+    found_n: n => `${n} vidéo${n!==1?'s':''} trouvée${n!==1?'s':''}`,
+    indexing_progress: (i,n) => `Indexation ${i} / ${n}…`,
+    all_processed: n => `${n} traitées.`,
+    confirm_del_video:'Supprimer cette vidéo et tous ses segments ?',
+    confirm_del_seg:'Supprimer ce segment ?',
+    btn_reset_index:'Réinitialiser', confirm_reset_index:'Supprimer TOUTES les vidéos et données indexées ? Irréversible.', reset_index_done:'Index réinitialisé. Toutes les données effacées.',
+    status_running:'En cours…', status_done:'Terminé', status_error:'Erreur',
+    status_exists:'Existe', status_indexed:'Indexé',
+    seg_n: n => `${n} segment${n!==1?'s':''}`,
+    err_no_url:'Veuillez entrer au moins une URL.',
+  },
+  es: {
+    admin_badge:'Admin', nav_search:'Buscar',
+    login_title:'Acceso Admin', login_sub:'Introduce la contraseña de administrador.',
+    login_placeholder:'Contraseña', login_error:'Contraseña incorrecta.', login_btn:'Desbloquear',
+    lock_open:'Abierto', lock_locked:'Bloqueado',
+    library_title:'Biblioteca', library_empty:'No hay vídeos indexados.',
+    stat_segments:'Segmentos', stat_videos:'Fuentes',
+    add_source:'Añadir fuente', add_source_sub:'Compatible con YouTube, LinkedIn, Instagram, TikTok, listas y enlaces directos.',
+    how_extract_title:'Para listas y canales',
+    how_extract_body:'Lista todos los vídeos de la URL. Nada se descarga todavía.',
+    how_index_title:'Para vídeos individuales',
+    how_index_body:'Descarga el audio, transcribe con Whisper y guarda en el índice.',
+    how_index_all_title:'Tras la extracción',
+    how_index_all_body:'Indexa cada vídeo descubierto con progreso en tiempo real.',
+    auth_hint_label:'Autenticación requerida:',
+    auth_hint_body:' LinkedIn, Instagram y TikTok pueden requerir login. Configura cookies_from_browser en config.yaml.',
+    url_placeholder:'https://www.youtube.com/watch?v=…',
+    url_hint:'Una URL por línea.',
+    btn_extract:'Extraer', btn_index_now:'Indexar', btn_index_all:'Indexar todo',
+    btn_clear:'Limpiar', btn_cancel:'Cancelar', btn_save:'Guardar', btn_close:'Cerrar',
+    seg_editor_title:'Editor de segmentos',
+    seg_editor_sub:'Edita texto o marcas de tiempo.',
+    seg_col_time:'Tiempo', seg_col_text:'Transcripción', seg_col_actions:'Acciones',
+    edit_title:'Editar segmento', edit_label_text:'Transcripción',
+    edit_label_start:'Inicio (seg)', edit_label_end:'Fin (seg)',
+    edit_reembed:'Re-incrustar texto',
+    indexing_log:'Registro de indexación',
+    found_n: n => `${n} vídeo${n!==1?'s':''} encontrado${n!==1?'s':''}`,
+    indexing_progress: (i,n) => `Indexando ${i} / ${n}…`,
+    all_processed: n => `${n} procesados.`,
+    confirm_del_video:'¿Eliminar este vídeo y todos sus segmentos?',
+    confirm_del_seg:'¿Eliminar este segmento?',
+    btn_reset_index:'Reiniciar índice', confirm_reset_index:'¿Eliminar TODOS los videos e índice?', reset_index_done:'Índice reiniciado.',
+    status_running:'En curso…', status_done:'Hecho', status_error:'Error',
+    status_exists:'Existe', status_indexed:'Indexado',
+    seg_n: n => `${n} segmento${n!==1?'s':''}`,
+    err_no_url:'Por favor introduce al menos una URL.',
+  },
+  de: {
+    admin_badge:'Admin', nav_search:'Suchen',
+    login_title:'Admin-Zugang', login_sub:'Gib das Admin-Passwort ein.',
+    login_placeholder:'Passwort', login_error:'Falsches Passwort.', login_btn:'Entsperren',
+    lock_open:'Offen', lock_locked:'Gesperrt',
+    library_title:'Bibliothek', library_empty:'Noch keine Videos indiziert.',
+    stat_segments:'Segmente', stat_videos:'Quellen',
+    add_source:'Videoquelle hinzufügen', add_source_sub:'Unterstützt YouTube, LinkedIn, Instagram, TikTok, Playlists und direkte Links.',
+    how_extract_title:'Für Playlists & Kanäle',
+    how_extract_body:'Listet alle Videos der URL auf. Es wird noch nichts heruntergeladen.',
+    how_index_title:'Für einzelne Videos',
+    how_index_body:'Lädt Audio herunter, transkribiert mit Whisper und speichert im Index.',
+    how_index_all_title:'Nach der Extraktion',
+    how_index_all_body:'Indiziert jedes gefundene Video mit Live-Fortschritt.',
+    auth_hint_label:'Authentifizierung erforderlich:',
+    auth_hint_body:' LinkedIn, Instagram und TikTok erfordern ggf. Anmeldung. Setze cookies_from_browser in config.yaml.',
+    url_placeholder:'https://www.youtube.com/watch?v=…',
+    url_hint:'Eine URL pro Zeile.',
+    btn_extract:'Extrahieren', btn_index_now:'Indizieren', btn_index_all:'Alle indizieren',
+    btn_clear:'Löschen', btn_cancel:'Abbrechen', btn_save:'Speichern', btn_close:'Schließen',
+    seg_editor_title:'Segment-Editor',
+    seg_editor_sub:'Transkript oder Zeitstempel bearbeiten.',
+    seg_col_time:'Zeit', seg_col_text:'Transkript', seg_col_actions:'Aktionen',
+    edit_title:'Segment bearbeiten', edit_label_text:'Transkript',
+    edit_label_start:'Start (Sek)', edit_label_end:'Ende (Sek)',
+    edit_reembed:'Text neu einbetten',
+    indexing_log:'Indizierungsprotokoll',
+    found_n: n => `${n} Video${n!==1?'s':''} gefunden`,
+    indexing_progress: (i,n) => `Indiziere ${i} / ${n}…`,
+    all_processed: n => `${n} verarbeitet.`,
+    confirm_del_video:'Dieses Video und alle Segmente löschen?',
+    confirm_del_seg:'Dieses Segment löschen?',
+    btn_reset_index:'Index zurücksetzen', confirm_reset_index:'ALLE indizierten Videos und Daten löschen?', reset_index_done:'Index zurückgesetzt.',
+    status_running:'Läuft…', status_done:'Fertig', status_error:'Fehler',
+    status_exists:'Vorhanden', status_indexed:'Indiziert',
+    seg_n: n => `${n} Segment${n!==1?'e':''}`,
+    err_no_url:'Bitte mindestens eine URL eingeben.',
+  },
+  pt: {
+    admin_badge:'Admin', nav_search:'Pesquisar',
+    login_title:'Acesso Admin', login_sub:'Introduza a palavra-passe de administrador.',
+    login_placeholder:'Palavra-passe', login_error:'Palavra-passe incorreta.', login_btn:'Desbloquear',
+    lock_open:'Aberto', lock_locked:'Bloqueado',
+    library_title:'Biblioteca', library_empty:'Nenhum vídeo indexado.',
+    stat_segments:'Segmentos', stat_videos:'Fontes',
+    add_source:'Adicionar fonte', add_source_sub:'Suporta YouTube, LinkedIn, Instagram, TikTok, playlists e links diretos.',
+    how_extract_title:'Para playlists e canais',
+    how_extract_body:'Lista todos os vídeos da URL. Ainda nada é descarregado.',
+    how_index_title:'Para vídeos individuais',
+    how_index_body:'Descarrega áudio, transcreve com Whisper e guarda no índice.',
+    how_index_all_title:'Após extração',
+    how_index_all_body:'Indexa cada vídeo descoberto com progresso em tempo real.',
+    auth_hint_label:'Autenticação necessária:',
+    auth_hint_body:' LinkedIn, Instagram e TikTok podem exigir login. Defina cookies_from_browser em config.yaml.',
+    url_placeholder:'https://www.youtube.com/watch?v=…',
+    url_hint:'Um URL por linha.',
+    btn_extract:'Extrair', btn_index_now:'Indexar', btn_index_all:'Indexar tudo',
+    btn_clear:'Limpar', btn_cancel:'Cancelar', btn_save:'Guardar', btn_close:'Fechar',
+    seg_editor_title:'Editor de segmentos',
+    seg_editor_sub:'Edite texto ou marcas de tempo.',
+    seg_col_time:'Tempo', seg_col_text:'Transcrição', seg_col_actions:'Ações',
+    edit_title:'Editar segmento', edit_label_text:'Transcrição',
+    edit_label_start:'Início (seg)', edit_label_end:'Fim (seg)',
+    edit_reembed:'Re-incorporar texto',
+    indexing_log:'Registo de indexação',
+    found_n: n => `${n} vídeo${n!==1?'s':''} encontrado${n!==1?'s':''}`,
+    indexing_progress: (i,n) => `A indexar ${i} / ${n}…`,
+    all_processed: n => `${n} processados.`,
+    confirm_del_video:'Eliminar este vídeo e todos os seus segmentos?',
+    confirm_del_seg:'Eliminar este segmento?',
+    btn_reset_index:'Reiniciar índice', confirm_reset_index:'Eliminar TODOS os vídeos e dados indexados?', reset_index_done:'Índice reiniciado.',
+    status_running:'A correr…', status_done:'Concluído', status_error:'Erro',
+    status_exists:'Existe', status_indexed:'Indexado',
+    seg_n: n => `${n} segmento${n!==1?'s':''}`,
+    err_no_url:'Por favor introduza pelo menos um URL.',
+  },
+  it: {
+    admin_badge:'Admin', nav_search:'Cerca',
+    login_title:'Accesso Admin', login_sub:'Inserisci la password di amministrazione.',
+    login_placeholder:'Password', login_error:'Password errata.', login_btn:'Sblocca',
+    lock_open:'Aperto', lock_locked:'Bloccato',
+    library_title:'Libreria', library_empty:'Nessun video indicizzato.',
+    stat_segments:'Segmenti', stat_videos:'Fonti',
+    add_source:'Aggiungi fonte', add_source_sub:'Supporta YouTube, LinkedIn, Instagram, TikTok, playlist e link diretti.',
+    how_extract_title:'Per playlist e canali',
+    how_extract_body:'Elenca tutti i video della URL. Nulla viene ancora scaricato.',
+    how_index_title:'Per video singoli',
+    how_index_body:'Scarica audio, trascrive con Whisper e salva nell\'indice.',
+    how_index_all_title:'Dopo l\'estrazione',
+    how_index_all_body:'Indicizza ogni video scoperto con progresso live.',
+    auth_hint_label:'Autenticazione richiesta:',
+    auth_hint_body:' LinkedIn, Instagram e TikTok potrebbero richiedere login. Imposta cookies_from_browser in config.yaml.',
+    url_placeholder:'https://www.youtube.com/watch?v=…',
+    url_hint:'Un URL per riga.',
+    btn_extract:'Estrai', btn_index_now:'Indicizza', btn_index_all:'Indicizza tutto',
+    btn_clear:'Cancella', btn_cancel:'Annulla', btn_save:'Salva', btn_close:'Chiudi',
+    seg_editor_title:'Editor segmenti',
+    seg_editor_sub:'Modifica testo o marcatori temporali.',
+    seg_col_time:'Tempo', seg_col_text:'Trascrizione', seg_col_actions:'Azioni',
+    edit_title:'Modifica segmento', edit_label_text:'Trascrizione',
+    edit_label_start:'Inizio (sec)', edit_label_end:'Fine (sec)',
+    edit_reembed:'Ri-incorpora il testo',
+    indexing_log:'Log di indicizzazione',
+    found_n: n => `${n} video trovato${n!==1?'i':''}`,
+    indexing_progress: (i,n) => `Indicizzando ${i} / ${n}…`,
+    all_processed: n => `${n} elaborati.`,
+    confirm_del_video:'Eliminare questo video e tutti i suoi segmenti?',
+    confirm_del_seg:'Eliminare questo segmento?',
+    btn_reset_index:'Reimposta indice', confirm_reset_index:'Eliminare TUTTI i video e dati indicizzati?', reset_index_done:'Indice reimpostato.',
+    status_running:'In corso…', status_done:'Fatto', status_error:'Errore',
+    status_exists:'Esiste', status_indexed:'Indicizzato',
+    seg_n: n => `${n} segmento${n!==1?'i':''}`,
+    err_no_url:'Inserisci almeno un URL.',
+  },
+  zh: {
+    admin_badge:'管理', nav_search:'搜索',
+    login_title:'管理员访问', login_sub:'请输入管理员密码。',
+    login_placeholder:'密码', login_error:'密码错误，请重试。', login_btn:'解锁',
+    lock_open:'开放', lock_locked:'已锁定',
+    library_title:'视频库', library_empty:'尚未索引任何视频。',
+    stat_segments:'片段', stat_videos:'来源',
+    add_source:'添加视频来源', add_source_sub:'支持 YouTube、LinkedIn、Instagram、TikTok、播放列表和直接链接。',
+    how_extract_title:'用于播放列表和频道',
+    how_extract_body:'列出该 URL 下的所有视频。此步骤不下载任何内容。',
+    how_index_title:'用于单个视频',
+    how_index_body:'下载音频，使用 Whisper 转录，并存入搜索索引。',
+    how_index_all_title:'提取后使用',
+    how_index_all_body:'逐一索引所有发现的视频，实时显示进度。',
+    auth_hint_label:'需要身份验证：',
+    auth_hint_body:' LinkedIn、Instagram 和 TikTok 可能需要登录。在 config.yaml 中设置 cookies_from_browser。',
+    url_placeholder:'https://www.youtube.com/watch?v=…',
+    url_hint:'每行一个 URL。',
+    btn_extract:'提取', btn_index_now:'立即索引', btn_index_all:'全部索引',
+    btn_clear:'清除', btn_cancel:'取消', btn_save:'保存', btn_close:'关闭',
+    seg_editor_title:'片段编辑器',
+    seg_editor_sub:'编辑转录文本或时间戳。',
+    seg_col_time:'时间', seg_col_text:'转录', seg_col_actions:'操作',
+    edit_title:'编辑片段', edit_label_text:'转录',
+    edit_label_start:'开始（秒）', edit_label_end:'结束（秒）',
+    edit_reembed:'重新嵌入文本',
+    indexing_log:'索引日志',
+    found_n: n => `找到 ${n} 个视频`,
+    indexing_progress: (i,n) => `正在索引 ${i} / ${n}…`,
+    all_processed: n => `已处理 ${n} 个。`,
+    confirm_del_video:'删除此视频及所有片段？',
+    confirm_del_seg:'删除此片段？',
+    btn_reset_index:'重置索引', confirm_reset_index:'删除所有已索引视频和数据？此操作不可撤销。', reset_index_done:'索引已重置，所有数据已清除。',
+    status_running:'运行中…', status_done:'完成', status_error:'错误',
+    status_exists:'已存在', status_indexed:'已索引',
+    seg_n: n => `${n} 个片段`,
+    err_no_url:'请至少输入一个 URL。',
+  },
+  ja: {
+    admin_badge:'管理', nav_search:'検索',
+    login_title:'管理者アクセス', login_sub:'管理者パスワードを入力してください。',
+    login_placeholder:'パスワード', login_error:'パスワードが違います。', login_btn:'ロック解除',
+    lock_open:'公開', lock_locked:'ロック中',
+    library_title:'動画ライブラリ', library_empty:'動画がインデックスされていません。',
+    stat_segments:'セグメント', stat_videos:'ソース',
+    add_source:'動画ソースを追加', add_source_sub:'YouTube、LinkedIn、Instagram、TikTok、プレイリスト、直接リンクに対応。',
+    how_extract_title:'プレイリスト・チャンネル用',
+    how_extract_body:'URLにある全動画を一覧表示します。この時点では何もダウンロードされません。',
+    how_index_title:'個別動画用',
+    how_index_body:'音声をダウンロードし、Whisperで文字起こししてインデックスに保存します。',
+    how_index_all_title:'抽出後に使用',
+    how_index_all_body:'発見した全動画を1件ずつインデックスし、進捗をリアルタイム表示します。',
+    auth_hint_label:'認証が必要です：',
+    auth_hint_body:' LinkedIn、Instagram、TikTokはログインが必要な場合があります。config.yamlでcookies_from_browserを設定してください。',
+    url_placeholder:'https://www.youtube.com/watch?v=…',
+    url_hint:'1行に1つのURL。',
+    btn_extract:'抽出', btn_index_now:'インデックス', btn_index_all:'全てインデックス',
+    btn_clear:'クリア', btn_cancel:'キャンセル', btn_save:'保存', btn_close:'閉じる',
+    seg_editor_title:'セグメントエディタ',
+    seg_editor_sub:'テキストやタイムスタンプを編集できます。',
+    seg_col_time:'時刻', seg_col_text:'テキスト', seg_col_actions:'操作',
+    edit_title:'セグメントを編集', edit_label_text:'テキスト',
+    edit_label_start:'開始（秒）', edit_label_end:'終了（秒）',
+    edit_reembed:'テキストを再埋め込み',
+    indexing_log:'インデックスログ',
+    found_n: n => `${n}件の動画が見つかりました`,
+    indexing_progress: (i,n) => `インデックス中 ${i} / ${n}…`,
+    all_processed: n => `${n}件処理完了。`,
+    confirm_del_video:'この動画と全セグメントを削除しますか？',
+    confirm_del_seg:'このセグメントを削除しますか？',
+    btn_reset_index:'インデックスをリセット', confirm_reset_index:'すべてのインデックスデータを削除しますか？', reset_index_done:'インデックスをリセットしました。',
+    status_running:'実行中…', status_done:'完了', status_error:'エラー',
+    status_exists:'既存', status_indexed:'インデックス済み',
+    seg_n: n => `${n}件のセグメント`,
+    err_no_url:'少なくとも1つのURLを入力してください。',
+  },
+  ar: {
+    admin_badge:'إدارة', nav_search:'بحث',
+    login_title:'الوصول الإداري', login_sub:'أدخل كلمة مرور المسؤول.',
+    login_placeholder:'كلمة المرور', login_error:'كلمة المرور خاطئة.', login_btn:'فتح القفل',
+    lock_open:'مفتوح', lock_locked:'مقفل',
+    library_title:'مكتبة الفيديو', library_empty:'لم يتم فهرسة أي مقاطع بعد.',
+    stat_segments:'مقاطع', stat_videos:'المصادر',
+    add_source:'إضافة مصدر', add_source_sub:'يدعم YouTube وLinkedIn وInstagram وTikTok والقوائم والروابط المباشرة.',
+    how_extract_title:'للقوائم والقنوات',
+    how_extract_body:'يسرد جميع مقاطع الفيديو في الرابط. لا يتم تنزيل أي شيء بعد.',
+    how_index_title:'لمقاطع الفيديو الفردية',
+    how_index_body:'يُنزّل الصوت ويحوّله إلى نص ويحفظه في الفهرس.',
+    how_index_all_title:'بعد الاستخراج',
+    how_index_all_body:'يفهرس كل مقطع مع عرض التقدم مباشرة.',
+    auth_hint_label:'المصادقة مطلوبة:',
+    auth_hint_body:' قد تتطلب LinkedIn وInstagram وTikTok تسجيل الدخول. اضبط cookies_from_browser في config.yaml.',
+    url_placeholder:'https://www.youtube.com/watch?v=…',
+    url_hint:'رابط واحد في كل سطر.',
+    btn_extract:'استخراج', btn_index_now:'فهرسة الآن', btn_index_all:'فهرسة الكل',
+    btn_clear:'مسح', btn_cancel:'إلغاء', btn_save:'حفظ', btn_close:'إغلاق',
+    seg_editor_title:'محرر المقاطع',
+    seg_editor_sub:'تعديل النص أو الطوابع الزمنية.',
+    seg_col_time:'الوقت', seg_col_text:'النص', seg_col_actions:'إجراءات',
+    edit_title:'تعديل المقطع', edit_label_text:'النص',
+    edit_label_start:'البداية (ثانية)', edit_label_end:'النهاية (ثانية)',
+    edit_reembed:'إعادة تضمين النص',
+    indexing_log:'سجل الفهرسة',
+    found_n: n => `تم العثور على ${n} مقطع`,
+    indexing_progress: (i,n) => `جارٍ الفهرسة ${i} / ${n}…`,
+    all_processed: n => `تمت معالجة ${n}.`,
+    confirm_del_video:'حذف هذا الفيديو وجميع مقاطعه؟',
+    confirm_del_seg:'حذف هذا المقطع؟',
+    btn_reset_index:'إعادة ضبط الفهرس', confirm_reset_index:'حذف جميع الفيديوهات والبيانات المفهرسة؟', reset_index_done:'تمت إعادة ضبط الفهرس.',
+    status_running:'جارٍ…', status_done:'تم', status_error:'خطأ',
+    status_exists:'موجود', status_indexed:'مفهرس',
+    seg_n: n => `${n} مقطع`,
+    err_no_url:'الرجاء إدخال رابط واحد على الأقل.',
+  },
+  nl: {
+    admin_badge:'Beheer', nav_search:'Zoeken',
+    login_title:'Beheerderstoegang', login_sub:'Voer het beheerderswachtwoord in.',
+    login_placeholder:'Wachtwoord', login_error:'Onjuist wachtwoord.', login_btn:'Ontgrendelen',
+    lock_open:'Open', lock_locked:'Vergrendeld',
+    library_title:'Videobibliotheek', library_empty:'Nog geen video\'s geïndexeerd.',
+    stat_segments:'Segmenten', stat_videos:'Bronnen',
+    add_source:'Bron toevoegen', add_source_sub:'Ondersteunt YouTube, LinkedIn, Instagram, TikTok, afspeellijsten en directe links.',
+    how_extract_title:'Voor afspeellijsten en kanalen',
+    how_extract_body:'Toont alle video\'s op de URL. Er wordt nog niets gedownload.',
+    how_index_title:'Voor afzonderlijke video\'s',
+    how_index_body:'Downloadt audio, transcribeert met Whisper en slaat op in de index.',
+    how_index_all_title:'Na extractie',
+    how_index_all_body:'Indexeert elke gevonden video één voor één met live voortgang.',
+    auth_hint_label:'Authenticatie vereist:',
+    auth_hint_body:' LinkedIn, Instagram en TikTok kunnen login vereisen. Stel cookies_from_browser in in config.yaml.',
+    url_placeholder:'https://www.youtube.com/watch?v=…',
+    url_hint:'Eén URL per regel.',
+    btn_extract:'Extraheren', btn_index_now:'Nu indexeren', btn_index_all:'Alles indexeren',
+    btn_clear:'Wissen', btn_cancel:'Annuleren', btn_save:'Opslaan', btn_close:'Sluiten',
+    seg_editor_title:'Segment-editor',
+    seg_editor_sub:'Bewerk transcriptie of tijdstempels.',
+    seg_col_time:'Tijd', seg_col_text:'Transcriptie', seg_col_actions:'Acties',
+    edit_title:'Segment bewerken', edit_label_text:'Transcriptie',
+    edit_label_start:'Begin (sec)', edit_label_end:'Einde (sec)',
+    edit_reembed:'Tekst opnieuw insluiten',
+    indexing_log:'Indexeringslogboek',
+    found_n: n => `${n} video${n!==1?'\'s':''} gevonden`,
+    indexing_progress: (i,n) => `Indexeren ${i} / ${n}…`,
+    all_processed: n => `${n} verwerkt.`,
+    confirm_del_video:'Deze video en alle segmenten verwijderen?',
+    confirm_del_seg:'Dit segment verwijderen?',
+    btn_reset_index:'Index resetten', confirm_reset_index:'ALLE geïndexeerde video\'s en gegevens verwijderen?', reset_index_done:'Index gereset.',
+    status_running:'Bezig…', status_done:'Klaar', status_error:'Fout',
+    status_exists:'Bestaat', status_indexed:'Geïndexeerd',
+    seg_n: n => `${n} segment${n!==1?'en':''}`,
+    err_no_url:'Voer ten minste één URL in.',
+  },
+  pl: {
+    admin_badge:'Admin', nav_search:'Szukaj',
+    login_title:'Dostęp administratora', login_sub:'Wprowadź hasło administratora.',
+    login_placeholder:'Hasło', login_error:'Nieprawidłowe hasło.', login_btn:'Odblokuj',
+    lock_open:'Otwarty', lock_locked:'Zablokowany',
+    library_title:'Biblioteka wideo', library_empty:'Brak zindeksowanych filmów.',
+    stat_segments:'Segmenty', stat_videos:'Źródła',
+    add_source:'Dodaj źródło', add_source_sub:'Obsługuje YouTube, LinkedIn, Instagram, TikTok, playlisty i bezpośrednie linki.',
+    how_extract_title:'Dla playlist i kanałów',
+    how_extract_body:'Wyświetla wszystkie filmy pod adresem URL. Nic nie jest jeszcze pobierane.',
+    how_index_title:'Dla pojedynczych filmów',
+    how_index_body:'Pobiera audio, transkrybuje za pomocą Whisper i zapisuje w indeksie.',
+    how_index_all_title:'Po ekstrakcji',
+    how_index_all_body:'Indeksuje każdy znaleziony film z podglądem postępu na żywo.',
+    auth_hint_label:'Wymagane uwierzytelnienie:',
+    auth_hint_body:' LinkedIn, Instagram i TikTok mogą wymagać logowania. Ustaw cookies_from_browser w config.yaml.',
+    url_placeholder:'https://www.youtube.com/watch?v=…',
+    url_hint:'Jeden URL w wierszu.',
+    btn_extract:'Wyodrębnij', btn_index_now:'Indeksuj teraz', btn_index_all:'Indeksuj wszystko',
+    btn_clear:'Wyczyść', btn_cancel:'Anuluj', btn_save:'Zapisz', btn_close:'Zamknij',
+    seg_editor_title:'Edytor segmentów',
+    seg_editor_sub:'Edytuj tekst transkrypcji lub znaczniki czasu.',
+    seg_col_time:'Czas', seg_col_text:'Transkrypcja', seg_col_actions:'Akcje',
+    edit_title:'Edytuj segment', edit_label_text:'Transkrypcja',
+    edit_label_start:'Początek (sek)', edit_label_end:'Koniec (sek)',
+    edit_reembed:'Ponownie osadź tekst',
+    indexing_log:'Dziennik indeksowania',
+    found_n: n => `Znaleziono ${n} film${n===1?'':'ów'}`,
+    indexing_progress: (i,n) => `Indeksowanie ${i} / ${n}…`,
+    all_processed: n => `${n} przetworzono.`,
+    confirm_del_video:'Usunąć ten film i wszystkie jego segmenty?',
+    confirm_del_seg:'Usunąć ten segment?',
+    btn_reset_index:'Resetuj indeks', confirm_reset_index:'Usunąć WSZYSTKIE zindeksowane filmy i dane?', reset_index_done:'Indeks zresetowany.',
+    status_running:'W toku…', status_done:'Gotowe', status_error:'Błąd',
+    status_exists:'Istnieje', status_indexed:'Zindeksowany',
+    seg_n: n => `${n} segment${n===1?'':'ów'}`,
+    err_no_url:'Proszę podać co najmniej jeden URL.',
+  },
+  cs: {
+    admin_badge:'Admin', nav_search:'Hledat',
+    login_title:'Přístup administrátora', login_sub:'Zadejte heslo administrátora.',
+    login_placeholder:'Heslo', login_error:'Nesprávné heslo.', login_btn:'Odemknout',
+    lock_open:'Otevřeno', lock_locked:'Zamčeno',
+    library_title:'Videoknihovna', library_empty:'Žádná videa dosud nezaindexována.',
+    stat_segments:'Segmenty', stat_videos:'Zdroje',
+    add_source:'Přidat zdroj', add_source_sub:'Podporuje YouTube, LinkedIn, Instagram, TikTok, playlisty a přímé odkazy.',
+    how_extract_title:'Pro playlisty a kanály',
+    how_extract_body:'Zobrazí všechna videa na URL. Zatím se nic nestahuje.',
+    how_index_title:'Pro jednotlivá videa',
+    how_index_body:'Stáhne audio, přepíše pomocí Whisper a uloží do indexu.',
+    how_index_all_title:'Po extrakci',
+    how_index_all_body:'Indexuje každé nalezené video s živým průběhem.',
+    auth_hint_label:'Vyžadováno ověření:',
+    auth_hint_body:' LinkedIn, Instagram a TikTok mohou vyžadovat přihlášení. Nastavte cookies_from_browser v config.yaml.',
+    url_placeholder:'https://www.youtube.com/watch?v=…',
+    url_hint:'Jeden URL na řádek.',
+    btn_extract:'Extrahovat', btn_index_now:'Indexovat nyní', btn_index_all:'Indexovat vše',
+    btn_clear:'Vymazat', btn_cancel:'Zrušit', btn_save:'Uložit', btn_close:'Zavřít',
+    seg_editor_title:'Editor segmentů',
+    seg_editor_sub:'Upravte text přepisu nebo časové razítky.',
+    seg_col_time:'Čas', seg_col_text:'Přepis', seg_col_actions:'Akce',
+    edit_title:'Upravit segment', edit_label_text:'Přepis',
+    edit_label_start:'Začátek (sek)', edit_label_end:'Konec (sek)',
+    edit_reembed:'Znovu vložit text',
+    indexing_log:'Protokol indexování',
+    found_n: n => `Nalezeno ${n} video${n===1?'':'í'}`,
+    indexing_progress: (i,n) => `Indexování ${i} / ${n}…`,
+    all_processed: n => `${n} zpracováno.`,
+    confirm_del_video:'Smazat toto video a všechny jeho segmenty?',
+    confirm_del_seg:'Smazat tento segment?',
+    btn_reset_index:'Resetovat index', confirm_reset_index:'Smazat VŠECHNA indexovaná videa a data?', reset_index_done:'Index resetován.',
+    status_running:'Probíhá…', status_done:'Hotovo', status_error:'Chyba',
+    status_exists:'Existuje', status_indexed:'Indexováno',
+    seg_n: n => `${n} segment${n===1?'':'ů'}`,
+    err_no_url:'Zadejte prosím alespoň jeden URL.',
+  },
+  sv: {
+    admin_badge:'Admin', nav_search:'Sök',
+    login_title:'Adminåtkomst', login_sub:'Ange administratörslösenordet.',
+    login_placeholder:'Lösenord', login_error:'Fel lösenord.', login_btn:'Lås upp',
+    lock_open:'Öppen', lock_locked:'Låst',
+    library_title:'Videobibliotek', library_empty:'Inga videor indexerade ännu.',
+    stat_segments:'Segment', stat_videos:'Källor',
+    add_source:'Lägg till källa', add_source_sub:'Stöder YouTube, LinkedIn, Instagram, TikTok, spellistor och direkta länkar.',
+    how_extract_title:'För spellistor och kanaler',
+    how_extract_body:'Listar alla videor på URL:en. Inget laddas ned ännu.',
+    how_index_title:'För enskilda videor',
+    how_index_body:'Laddar ned ljud, transkriberar med Whisper och sparar i indexet.',
+    how_index_all_title:'Efter extrahering',
+    how_index_all_body:'Indexerar varje hittad video med live-förlopp.',
+    auth_hint_label:'Autentisering krävs:',
+    auth_hint_body:' LinkedIn, Instagram och TikTok kan kräva inloggning. Ange cookies_from_browser i config.yaml.',
+    url_placeholder:'https://www.youtube.com/watch?v=…',
+    url_hint:'En URL per rad.',
+    btn_extract:'Extrahera', btn_index_now:'Indexera nu', btn_index_all:'Indexera allt',
+    btn_clear:'Rensa', btn_cancel:'Avbryt', btn_save:'Spara', btn_close:'Stäng',
+    seg_editor_title:'Segmentredigerare',
+    seg_editor_sub:'Redigera transkriptionstext eller tidsstämplar.',
+    seg_col_time:'Tid', seg_col_text:'Transkription', seg_col_actions:'Åtgärder',
+    edit_title:'Redigera segment', edit_label_text:'Transkription',
+    edit_label_start:'Start (sek)', edit_label_end:'Slut (sek)',
+    edit_reembed:'Bädda in text på nytt',
+    indexing_log:'Indexeringslogg',
+    found_n: n => `${n} video${n!==1?'r':''} hittad${n!==1?'e':''}`,
+    indexing_progress: (i,n) => `Indexerar ${i} / ${n}…`,
+    all_processed: n => `${n} behandlade.`,
+    confirm_del_video:'Ta bort denna video och alla dess segment?',
+    confirm_del_seg:'Ta bort detta segment?',
+    btn_reset_index:'Återställ index', confirm_reset_index:'Ta bort ALLA indexerade videor och data?', reset_index_done:'Index återställt.',
+    status_running:'Körs…', status_done:'Klar', status_error:'Fel',
+    status_exists:'Finns', status_indexed:'Indexerad',
+    seg_n: n => `${n} segment`,
+    err_no_url:'Ange minst en URL.',
+  },
+  da: {
+    admin_badge:'Admin', nav_search:'Søg',
+    login_title:'Admin-adgang', login_sub:'Indtast administratoradgangskoden.',
+    login_placeholder:'Adgangskode', login_error:'Forkert adgangskode.', login_btn:'Lås op',
+    lock_open:'Åben', lock_locked:'Låst',
+    library_title:'Videobibliotek', library_empty:'Ingen videoer indekseret endnu.',
+    stat_segments:'Segmenter', stat_videos:'Kilder',
+    add_source:'Tilføj kilde', add_source_sub:'Understøtter YouTube, LinkedIn, Instagram, TikTok, afspilningslister og direkte links.',
+    how_extract_title:'Til afspilningslister og kanaler',
+    how_extract_body:'Viser alle videoer på URL\'en. Intet downloades endnu.',
+    how_index_title:'Til individuelle videoer',
+    how_index_body:'Downloader lyd, transkriberer med Whisper og gemmer i indekset.',
+    how_index_all_title:'Efter udtrækning',
+    how_index_all_body:'Indekserer hver fundet video med live fremskridt.',
+    auth_hint_label:'Godkendelse påkrævet:',
+    auth_hint_body:' LinkedIn, Instagram og TikTok kræver muligvis login. Angiv cookies_from_browser i config.yaml.',
+    url_placeholder:'https://www.youtube.com/watch?v=…',
+    url_hint:'Én URL pr. linje.',
+    btn_extract:'Udtræk', btn_index_now:'Indekser nu', btn_index_all:'Indekser alt',
+    btn_clear:'Ryd', btn_cancel:'Annuller', btn_save:'Gem', btn_close:'Luk',
+    seg_editor_title:'Segmenteditor',
+    seg_editor_sub:'Rediger transskriptionstekst eller tidsstempler.',
+    seg_col_time:'Tid', seg_col_text:'Transskription', seg_col_actions:'Handlinger',
+    edit_title:'Rediger segment', edit_label_text:'Transskription',
+    edit_label_start:'Start (sek)', edit_label_end:'Slut (sek)',
+    edit_reembed:'Genindsæt tekst',
+    indexing_log:'Indekseringslog',
+    found_n: n => `${n} video${n!==1?'er':''} fundet`,
+    indexing_progress: (i,n) => `Indekserer ${i} / ${n}…`,
+    all_processed: n => `${n} behandlet.`,
+    confirm_del_video:'Slet denne video og alle dens segmenter?',
+    confirm_del_seg:'Slet dette segment?',
+    btn_reset_index:'Nulstil indeks', confirm_reset_index:'Slette ALLE indekserede videoer og data?', reset_index_done:'Indeks nulstillet.',
+    status_running:'Kører…', status_done:'Færdig', status_error:'Fejl',
+    status_exists:'Findes', status_indexed:'Indekseret',
+    seg_n: n => `${n} segment${n!==1?'er':''}`,
+    err_no_url:'Angiv venligst mindst én URL.',
+  },
+  fi: {
+    admin_badge:'Admin', nav_search:'Hae',
+    login_title:'Ylläpitäjän pääsy', login_sub:'Syötä ylläpitäjän salasana.',
+    login_placeholder:'Salasana', login_error:'Väärä salasana.', login_btn:'Avaa lukitus',
+    lock_open:'Avoin', lock_locked:'Lukittu',
+    library_title:'Videokirjasto', library_empty:'Ei indeksoituja videoita vielä.',
+    stat_segments:'Segmentit', stat_videos:'Lähteet',
+    add_source:'Lisää lähde', add_source_sub:'Tukee YouTubea, LinkedIniä, Instagramia, TikTokia, soittolistoja ja suoria linkkejä.',
+    how_extract_title:'Soittolistoille ja kanaville',
+    how_extract_body:'Listaa kaikki URL:n videot. Mitään ei ladata vielä.',
+    how_index_title:'Yksittäisille videoille',
+    how_index_body:'Lataa äänen, transkriboi Whisperillä ja tallentaa indeksiin.',
+    how_index_all_title:'Poimimisen jälkeen',
+    how_index_all_body:'Indeksoi jokaisen löydetyn videon reaaliaikaisella etenemisellä.',
+    auth_hint_label:'Todennus vaaditaan:',
+    auth_hint_body:' LinkedIn, Instagram ja TikTok saattavat vaatia kirjautumisen. Aseta cookies_from_browser config.yaml:ssa.',
+    url_placeholder:'https://www.youtube.com/watch?v=…',
+    url_hint:'Yksi URL per rivi.',
+    btn_extract:'Poimia', btn_index_now:'Indeksoi nyt', btn_index_all:'Indeksoi kaikki',
+    btn_clear:'Tyhjennä', btn_cancel:'Peruuta', btn_save:'Tallenna', btn_close:'Sulje',
+    seg_editor_title:'Segmentieditori',
+    seg_editor_sub:'Muokkaa transkriptiotekstiä tai aikaleimoja.',
+    seg_col_time:'Aika', seg_col_text:'Transkriptio', seg_col_actions:'Toiminnot',
+    edit_title:'Muokkaa segmenttiä', edit_label_text:'Transkriptio',
+    edit_label_start:'Alku (sek)', edit_label_end:'Loppu (sek)',
+    edit_reembed:'Upota teksti uudelleen',
+    indexing_log:'Indeksointiloki',
+    found_n: n => `${n} video${n!==1?'ta':''} löydetty`,
+    indexing_progress: (i,n) => `Indeksoidaan ${i} / ${n}…`,
+    all_processed: n => `${n} käsitelty.`,
+    confirm_del_video:'Poista tämä video ja kaikki sen segmentit?',
+    confirm_del_seg:'Poista tämä segmentti?',
+    btn_reset_index:'Nollaa indeksi', confirm_reset_index:'Poistaa KAIKKI indeksoidut videot ja tiedot?', reset_index_done:'Indeksi nollattu.',
+    status_running:'Käynnissä…', status_done:'Valmis', status_error:'Virhe',
+    status_exists:'Olemassa', status_indexed:'Indeksoitu',
+    seg_n: n => `${n} segmentti${n!==1?'ä':''}`,
+    err_no_url:'Syötä vähintään yksi URL.',
+  },
+  el: {
+    admin_badge:'Διαχείριση', nav_search:'Αναζήτηση',
+    login_title:'Πρόσβαση διαχειριστή', login_sub:'Εισάγετε τον κωδικό διαχειριστή.',
+    login_placeholder:'Κωδικός', login_error:'Λάθος κωδικός.', login_btn:'Ξεκλείδωμα',
+    lock_open:'Ανοιχτό', lock_locked:'Κλειδωμένο',
+    library_title:'Βιβλιοθήκη βίντεο', library_empty:'Κανένα βίντεο ευρετηριασμένο ακόμα.',
+    stat_segments:'Τμήματα', stat_videos:'Πηγές',
+    add_source:'Προσθήκη πηγής', add_source_sub:'Υποστηρίζει YouTube, LinkedIn, Instagram, TikTok, λίστες και απευθείας συνδέσμους.',
+    how_extract_title:'Για λίστες και κανάλια',
+    how_extract_body:'Εμφανίζει όλα τα βίντεο στη διεύθυνση URL. Τίποτα δεν κατεβαίνει ακόμα.',
+    how_index_title:'Για μεμονωμένα βίντεο',
+    how_index_body:'Κατεβάζει ήχο, μεταγράφει με Whisper και αποθηκεύει στον κατάλογο.',
+    how_index_all_title:'Μετά την εξαγωγή',
+    how_index_all_body:'Ευρετηριάζει κάθε βίντεο που βρέθηκε με ζωντανή πρόοδο.',
+    auth_hint_label:'Απαιτείται πιστοποίηση:',
+    auth_hint_body:' Το LinkedIn, Instagram και TikTok ενδέχεται να χρειάζονται σύνδεση. Ορίστε cookies_from_browser στο config.yaml.',
+    url_placeholder:'https://www.youtube.com/watch?v=…',
+    url_hint:'Ένας σύνδεσμος ανά γραμμή.',
+    btn_extract:'Εξαγωγή', btn_index_now:'Ευρετηρίαση τώρα', btn_index_all:'Ευρετηρίαση όλων',
+    btn_clear:'Εκκαθάριση', btn_cancel:'Ακύρωση', btn_save:'Αποθήκευση', btn_close:'Κλείσιμο',
+    seg_editor_title:'Επεξεργαστής τμημάτων',
+    seg_editor_sub:'Επεξεργαστείτε κείμενο ή χρονικές σημάνσεις.',
+    seg_col_time:'Ώρα', seg_col_text:'Μεταγραφή', seg_col_actions:'Ενέργειες',
+    edit_title:'Επεξεργασία τμήματος', edit_label_text:'Μεταγραφή',
+    edit_label_start:'Έναρξη (δευτ)', edit_label_end:'Λήξη (δευτ)',
+    edit_reembed:'Επανενσωμάτωση κειμένου',
+    indexing_log:'Αρχείο καταγραφής ευρετηρίασης',
+    found_n: n => `Βρέθηκαν ${n} βίντεο`,
+    indexing_progress: (i,n) => `Ευρετηρίαση ${i} / ${n}…`,
+    all_processed: n => `${n} επεξεργάστηκαν.`,
+    confirm_del_video:'Διαγραφή αυτού του βίντεο και όλων των τμημάτων του;',
+    confirm_del_seg:'Διαγραφή αυτού του τμήματος;',
+    btn_reset_index:'Επαναφορά ευρετηρίου', confirm_reset_index:'Διαγραφή ΟΛΩΝ των ευρετηριασμένων βίντεο και δεδομένων;', reset_index_done:'Ευρετήριο επαναφέρθηκε.',
+    status_running:'Εκτέλεση…', status_done:'Ολοκληρώθηκε', status_error:'Σφάλμα',
+    status_exists:'Υπάρχει', status_indexed:'Ευρετηριασμένο',
+    seg_n: n => `${n} τμήμα${n!==1?'τα':''}`,
+    err_no_url:'Εισάγετε τουλάχιστον έναν σύνδεσμο.',
+  },
+  hu: {
+    admin_badge:'Admin', nav_search:'Keresés',
+    login_title:'Adminisztrátor hozzáférés', login_sub:'Adja meg az adminisztrátor jelszavát.',
+    login_placeholder:'Jelszó', login_error:'Helytelen jelszó.', login_btn:'Feloldás',
+    lock_open:'Nyitott', lock_locked:'Zárolt',
+    library_title:'Videókönyvtár', library_empty:'Még nincsenek indexelt videók.',
+    stat_segments:'Szegmensek', stat_videos:'Források',
+    add_source:'Forrás hozzáadása', add_source_sub:'Támogatja a YouTube-ot, LinkedInt, Instagramot, TikTokot, lejátszási listákat és közvetlen linkeket.',
+    how_extract_title:'Lejátszási listákhoz és csatornákhoz',
+    how_extract_body:'Listázza az URL összes videóját. Még semmi nem töltődik le.',
+    how_index_title:'Egyedi videókhoz',
+    how_index_body:'Letölti a hangot, átírja Whisperrel és elmenti az indexbe.',
+    how_index_all_title:'Kinyerés után',
+    how_index_all_body:'Minden megtalált videót egyenként indexel élő előrehaladással.',
+    auth_hint_label:'Hitelesítés szükséges:',
+    auth_hint_body:' A LinkedIn, Instagram és TikTok bejelentkezést igényelhet. Állítsa be a cookies_from_browser értéket a config.yaml fájlban.',
+    url_placeholder:'https://www.youtube.com/watch?v=…',
+    url_hint:'Soronként egy URL.',
+    btn_extract:'Kinyerés', btn_index_now:'Indexelés most', btn_index_all:'Minden indexelése',
+    btn_clear:'Törlés', btn_cancel:'Mégse', btn_save:'Mentés', btn_close:'Bezárás',
+    seg_editor_title:'Szegmensszerkesztő',
+    seg_editor_sub:'Szerkessze az átirat szövegét vagy az időbélyegzőket.',
+    seg_col_time:'Idő', seg_col_text:'Átirat', seg_col_actions:'Műveletek',
+    edit_title:'Szegmens szerkesztése', edit_label_text:'Átirat',
+    edit_label_start:'Kezdet (mp)', edit_label_end:'Vége (mp)',
+    edit_reembed:'Szöveg újraágyazása',
+    indexing_log:'Indexelési napló',
+    found_n: n => `${n} videó találva`,
+    indexing_progress: (i,n) => `Indexelés ${i} / ${n}…`,
+    all_processed: n => `${n} feldolgozva.`,
+    confirm_del_video:'Törli ezt a videót és az összes szegmenset?',
+    confirm_del_seg:'Törli ezt a szegmenst?',
+    btn_reset_index:'Index visszaállítása', confirm_reset_index:'Törli az ÖSSZES indexelt videót és adatot?', reset_index_done:'Index visszaállítva.',
+    status_running:'Futás…', status_done:'Kész', status_error:'Hiba',
+    status_exists:'Létezik', status_indexed:'Indexelve',
+    seg_n: n => `${n} szegmens`,
+    err_no_url:'Kérjük, adjon meg legalább egy URL-t.',
+  },
+  ro: {
+    admin_badge:'Admin', nav_search:'Caută',
+    login_title:'Acces administrator', login_sub:'Introduceți parola de administrator.',
+    login_placeholder:'Parolă', login_error:'Parolă incorectă.', login_btn:'Deblochează',
+    lock_open:'Deschis', lock_locked:'Blocat',
+    library_title:'Bibliotecă video', library_empty:'Niciun videoclip indexat încă.',
+    stat_segments:'Segmente', stat_videos:'Surse',
+    add_source:'Adaugă sursă', add_source_sub:'Acceptă YouTube, LinkedIn, Instagram, TikTok, liste de redare și linkuri directe.',
+    how_extract_title:'Pentru liste de redare și canale',
+    how_extract_body:'Listează toate videoclipurile de la URL. Nimic nu este descărcat încă.',
+    how_index_title:'Pentru videoclipuri individuale',
+    how_index_body:'Descarcă audio, transcrie cu Whisper și stochează în index.',
+    how_index_all_title:'După extragere',
+    how_index_all_body:'Indexează fiecare videoclip descoperit cu progres live.',
+    auth_hint_label:'Autentificare necesară:',
+    auth_hint_body:' LinkedIn, Instagram și TikTok pot necesita autentificare. Setați cookies_from_browser în config.yaml.',
+    url_placeholder:'https://www.youtube.com/watch?v=…',
+    url_hint:'Un URL pe linie.',
+    btn_extract:'Extrage', btn_index_now:'Indexează acum', btn_index_all:'Indexează tot',
+    btn_clear:'Șterge', btn_cancel:'Anulează', btn_save:'Salvează', btn_close:'Închide',
+    seg_editor_title:'Editor segmente',
+    seg_editor_sub:'Editați textul transcrierii sau marcajele de timp.',
+    seg_col_time:'Timp', seg_col_text:'Transcriere', seg_col_actions:'Acțiuni',
+    edit_title:'Editați segmentul', edit_label_text:'Transcriere',
+    edit_label_start:'Început (sec)', edit_label_end:'Sfârșit (sec)',
+    edit_reembed:'Reîncorporați textul',
+    indexing_log:'Jurnal de indexare',
+    found_n: n => `${n} videoclip${n!==1?'uri':''} găsit${n!==1?'e':''}`,
+    indexing_progress: (i,n) => `Indexare ${i} / ${n}…`,
+    all_processed: n => `${n} procesate.`,
+    confirm_del_video:'Ștergeți acest videoclip și toate segmentele sale?',
+    confirm_del_seg:'Ștergeți acest segment?',
+    btn_reset_index:'Resetați indexul', confirm_reset_index:'Ștergeți TOATE videoclipurile și datele indexate?', reset_index_done:'Index resetat.',
+    status_running:'Se execută…', status_done:'Gata', status_error:'Eroare',
+    status_exists:'Există', status_indexed:'Indexat',
+    seg_n: n => `${n} segment${n!==1?'e':''}`,
+    err_no_url:'Introduceți cel puțin un URL.',
+  },
+  bg: {
+    admin_badge:'Администрация', nav_search:'Търси',
+    login_title:'Достъп на администратор', login_sub:'Въведете паролата на администратора.',
+    login_placeholder:'Парола', login_error:'Грешна парола.', login_btn:'Отключване',
+    lock_open:'Отворено', lock_locked:'Заключено',
+    library_title:'Видеотека', library_empty:'Все още няма индексирани видеа.',
+    stat_segments:'Сегменти', stat_videos:'Източници',
+    add_source:'Добавяне на източник', add_source_sub:'Поддържа YouTube, LinkedIn, Instagram, TikTok, плейлисти и директни връзки.',
+    how_extract_title:'За плейлисти и канали',
+    how_extract_body:'Показва всички видеа на URL. Все още нищо не се изтегля.',
+    how_index_title:'За отделни видеа',
+    how_index_body:'Изтегля аудио, транскрибира с Whisper и съхранява в индекса.',
+    how_index_all_title:'След извличане',
+    how_index_all_body:'Индексира всяко намерено видео с напредък на живо.',
+    auth_hint_label:'Необходима е автентификация:',
+    auth_hint_body:' LinkedIn, Instagram и TikTok може да изискват вход. Задайте cookies_from_browser в config.yaml.',
+    url_placeholder:'https://www.youtube.com/watch?v=…',
+    url_hint:'Един URL на ред.',
+    btn_extract:'Извличане', btn_index_now:'Индексирай сега', btn_index_all:'Индексирай всичко',
+    btn_clear:'Изчисти', btn_cancel:'Отказ', btn_save:'Запази', btn_close:'Затвори',
+    seg_editor_title:'Редактор на сегменти',
+    seg_editor_sub:'Редактирайте текст на транскрипцията или времеви маркери.',
+    seg_col_time:'Време', seg_col_text:'Транскрипция', seg_col_actions:'Действия',
+    edit_title:'Редактиране на сегмент', edit_label_text:'Транскрипция',
+    edit_label_start:'Начало (сек)', edit_label_end:'Край (сек)',
+    edit_reembed:'Преинтегриране на текста',
+    indexing_log:'Дневник на индексиране',
+    found_n: n => `Намерени ${n} видео${n!==1?'а':''}`,
+    indexing_progress: (i,n) => `Индексиране ${i} / ${n}…`,
+    all_processed: n => `${n} обработени.`,
+    confirm_del_video:'Изтриване на това видео и всичките му сегменти?',
+    confirm_del_seg:'Изтриване на този сегмент?',
+    btn_reset_index:'Нулиране на индекса', confirm_reset_index:'Изтриване на ВСИЧКИ индексирани видеа и данни?', reset_index_done:'Индексът е нулиран.',
+    status_running:'Работи…', status_done:'Готово', status_error:'Грешка',
+    status_exists:'Съществува', status_indexed:'Индексирано',
+    seg_n: n => `${n} сегмент${n!==1?'а':''}`,
+    err_no_url:'Моля, въведете поне един URL.',
+  },
+  hr: {
+    admin_badge:'Admin', nav_search:'Traži',
+    login_title:'Pristup administratora', login_sub:'Unesite lozinku administratora.',
+    login_placeholder:'Lozinka', login_error:'Pogrešna lozinka.', login_btn:'Otključaj',
+    lock_open:'Otvoreno', lock_locked:'Zaključano',
+    library_title:'Videoteka', library_empty:'Još nema indeksiranih videa.',
+    stat_segments:'Segmenti', stat_videos:'Izvori',
+    add_source:'Dodaj izvor', add_source_sub:'Podržava YouTube, LinkedIn, Instagram, TikTok, popise i izravne veze.',
+    how_extract_title:'Za popise i kanale',
+    how_extract_body:'Prikazuje sva videa na URL-u. Ništa se još ne preuzima.',
+    how_index_title:'Za pojedinačna videa',
+    how_index_body:'Preuzima zvuk, transkribira s Whisperom i pohranjuje u indeks.',
+    how_index_all_title:'Nakon izdvajanja',
+    how_index_all_body:'Indeksira svako pronađeno video s live napretkom.',
+    auth_hint_label:'Potrebna provjera identiteta:',
+    auth_hint_body:' LinkedIn, Instagram i TikTok mogu zahtijevati prijavu. Postavite cookies_from_browser u config.yaml.',
+    url_placeholder:'https://www.youtube.com/watch?v=…',
+    url_hint:'Jedan URL po retku.',
+    btn_extract:'Izdvoji', btn_index_now:'Indeksiraj sada', btn_index_all:'Indeksiraj sve',
+    btn_clear:'Očisti', btn_cancel:'Odustani', btn_save:'Spremi', btn_close:'Zatvori',
+    seg_editor_title:'Urednik segmenata',
+    seg_editor_sub:'Uredite tekst transkripcije ili vremenske oznake.',
+    seg_col_time:'Vrijeme', seg_col_text:'Transkripcija', seg_col_actions:'Radnje',
+    edit_title:'Uredi segment', edit_label_text:'Transkripcija',
+    edit_label_start:'Početak (sek)', edit_label_end:'Kraj (sek)',
+    edit_reembed:'Ponovno ugradi tekst',
+    indexing_log:'Dnevnik indeksiranja',
+    found_n: n => `${n} video${n!==1?'a':''} pronađeno`,
+    indexing_progress: (i,n) => `Indeksiranje ${i} / ${n}…`,
+    all_processed: n => `${n} obrađeno.`,
+    confirm_del_video:'Izbrisati ovo video i sve njegove segmente?',
+    confirm_del_seg:'Izbrisati ovaj segment?',
+    btn_reset_index:'Resetiraj indeks', confirm_reset_index:'Izbrisati SVA indeksirana videa i podatke?', reset_index_done:'Indeks resetiran.',
+    status_running:'U tijeku…', status_done:'Gotovo', status_error:'Greška',
+    status_exists:'Postoji', status_indexed:'Indeksirano',
+    seg_n: n => `${n} segment${n!==1?'a':''}`,
+    err_no_url:'Unesite barem jedan URL.',
+  },
+  sk: {
+    admin_badge:'Admin', nav_search:'Hľadať',
+    login_title:'Prístup administrátora', login_sub:'Zadajte heslo administrátora.',
+    login_placeholder:'Heslo', login_error:'Nesprávne heslo.', login_btn:'Odomknúť',
+    lock_open:'Otvorené', lock_locked:'Zamknuté',
+    library_title:'Videoknižnica', library_empty:'Žiadne videá dosiaľ nezaindexované.',
+    stat_segments:'Segmenty', stat_videos:'Zdroje',
+    add_source:'Pridať zdroj', add_source_sub:'Podporuje YouTube, LinkedIn, Instagram, TikTok, playlisty a priame odkazy.',
+    how_extract_title:'Pre playlisty a kanály',
+    how_extract_body:'Zobrazuje všetky videá na URL. Nič sa ešte nesťahuje.',
+    how_index_title:'Pre jednotlivé videá',
+    how_index_body:'Stiahne audio, prepíše pomocou Whisper a uloží do indexu.',
+    how_index_all_title:'Po extrakcii',
+    how_index_all_body:'Indexuje každé nájdené video s živým priebehom.',
+    auth_hint_label:'Vyžaduje sa overenie:',
+    auth_hint_body:' LinkedIn, Instagram a TikTok môžu vyžadovať prihlásenie. Nastavte cookies_from_browser v config.yaml.',
+    url_placeholder:'https://www.youtube.com/watch?v=…',
+    url_hint:'Jeden URL na riadok.',
+    btn_extract:'Extrahovať', btn_index_now:'Indexovať teraz', btn_index_all:'Indexovať všetko',
+    btn_clear:'Vymazať', btn_cancel:'Zrušiť', btn_save:'Uložiť', btn_close:'Zavrieť',
+    seg_editor_title:'Editor segmentov',
+    seg_editor_sub:'Upravte text prepisu alebo časové pečiatky.',
+    seg_col_time:'Čas', seg_col_text:'Prepis', seg_col_actions:'Akcie',
+    edit_title:'Upraviť segment', edit_label_text:'Prepis',
+    edit_label_start:'Začiatok (sek)', edit_label_end:'Koniec (sek)',
+    edit_reembed:'Znova vložiť text',
+    indexing_log:'Protokol indexovania',
+    found_n: n => `Nájdených ${n} video${n===1?'':'í'}`,
+    indexing_progress: (i,n) => `Indexovanie ${i} / ${n}…`,
+    all_processed: n => `${n} spracovaných.`,
+    confirm_del_video:'Odstrániť toto video a všetky jeho segmenty?',
+    confirm_del_seg:'Odstrániť tento segment?',
+    btn_reset_index:'Resetovať index', confirm_reset_index:'Odstrániť VŠETKY indexované videá a údaje?', reset_index_done:'Index bol resetovaný.',
+    status_running:'Prebieha…', status_done:'Hotovo', status_error:'Chyba',
+    status_exists:'Existuje', status_indexed:'Indexované',
+    seg_n: n => `${n} segment${n===1?'':'ov'}`,
+    err_no_url:'Zadajte prosím aspoň jeden URL.',
+  },
+  sl: {
+    admin_badge:'Admin', nav_search:'Iskanje',
+    login_title:'Skrbniški dostop', login_sub:'Vnesite skrbniško geslo.',
+    login_placeholder:'Geslo', login_error:'Napačno geslo.', login_btn:'Odkleni',
+    lock_open:'Odprto', lock_locked:'Zaklenjeno',
+    library_title:'Videoteka', library_empty:'Noben videoposnetek še ni indeksiran.',
+    stat_segments:'Segmenti', stat_videos:'Viri',
+    add_source:'Dodaj vir', add_source_sub:'Podpira YouTube, LinkedIn, Instagram, TikTok, sezname predvajanja in neposredne povezave.',
+    how_extract_title:'Za sezname predvajanja in kanale',
+    how_extract_body:'Prikaže vse videoposnetke na URL-ju. Nič se še ne prenaša.',
+    how_index_title:'Za posamezne videoposnetke',
+    how_index_body:'Prenese zvok, ga prepiše z Whisperjem in shrani v indeks.',
+    how_index_all_title:'Po ekstrakciji',
+    how_index_all_body:'Indeksira vsak najden videoposnetek z napredkom v živo.',
+    auth_hint_label:'Zahtevana avtentikacija:',
+    auth_hint_body:' LinkedIn, Instagram in TikTok morda zahtevajo prijavo. Nastavite cookies_from_browser v config.yaml.',
+    url_placeholder:'https://www.youtube.com/watch?v=…',
+    url_hint:'En URL na vrstico.',
+    btn_extract:'Ekstrahiraj', btn_index_now:'Indeksiraj zdaj', btn_index_all:'Indeksiraj vse',
+    btn_clear:'Počisti', btn_cancel:'Prekliči', btn_save:'Shrani', btn_close:'Zapri',
+    seg_editor_title:'Urejevalnik segmentov',
+    seg_editor_sub:'Uredite besedilo prepisa ali časovne oznake.',
+    seg_col_time:'Čas', seg_col_text:'Prepis', seg_col_actions:'Dejanja',
+    edit_title:'Uredi segment', edit_label_text:'Prepis',
+    edit_label_start:'Začetek (sek)', edit_label_end:'Konec (sek)',
+    edit_reembed:'Znova vgradi besedilo',
+    indexing_log:'Dnevnik indeksiranja',
+    found_n: n => `Najdenih ${n} videoposnetek${n===1?'':'ov'}`,
+    indexing_progress: (i,n) => `Indeksiranje ${i} / ${n}…`,
+    all_processed: n => `${n} obdelanih.`,
+    confirm_del_video:'Izbrisati ta videoposnetek in vse njegove segmente?',
+    confirm_del_seg:'Izbrisati ta segment?',
+    btn_reset_index:'Ponastavi indeks', confirm_reset_index:'Izbrisati VSE indeksirane videoposnetke in podatke?', reset_index_done:'Indeks je bil ponastavljen.',
+    status_running:'Poteka…', status_done:'Končano', status_error:'Napaka',
+    status_exists:'Obstaja', status_indexed:'Indeksirano',
+    seg_n: n => `${n} segment${n===1?'':'ov'}`,
+    err_no_url:'Vnesite vsaj en URL.',
+  },
+  et: {
+    admin_badge:'Admin', nav_search:'Otsi',
+    login_title:'Administraatori juurdepääs', login_sub:'Sisestage administraatori parool.',
+    login_placeholder:'Parool', login_error:'Vale parool.', login_btn:'Ava lukustus',
+    lock_open:'Avatud', lock_locked:'Lukustatud',
+    library_title:'Videokogu', library_empty:'Videoid pole veel indekseeritud.',
+    stat_segments:'Segmendid', stat_videos:'Allikad',
+    add_source:'Lisa allikas', add_source_sub:'Toetab YouTube\'i, LinkedIni, Instagrami, TikToki, esitusloendeid ja otselinke.',
+    how_extract_title:'Esitusloendite ja kanalite jaoks',
+    how_extract_body:'Loetleb kõik URL-i videod. Midagi ei laadita veel alla.',
+    how_index_title:'Üksikute videote jaoks',
+    how_index_body:'Laadib alla heli, transkribeerib Whisperiga ja salvestab indeksisse.',
+    how_index_all_title:'Pärast ekstraktimist',
+    how_index_all_body:'Indekseerib iga leitud video reaalajas edenemisega.',
+    auth_hint_label:'Autentimine on nõutav:',
+    auth_hint_body:' LinkedIn, Instagram ja TikTok võivad nõuda sisselogimist. Määrake cookies_from_browser failis config.yaml.',
+    url_placeholder:'https://www.youtube.com/watch?v=…',
+    url_hint:'Üks URL rea kohta.',
+    btn_extract:'Eralda', btn_index_now:'Indekseeri kohe', btn_index_all:'Indekseeri kõik',
+    btn_clear:'Tühjenda', btn_cancel:'Tühista', btn_save:'Salvesta', btn_close:'Sulge',
+    seg_editor_title:'Segmentide redaktor',
+    seg_editor_sub:'Redigeerige transkriptsiooni teksti või ajatempleid.',
+    seg_col_time:'Aeg', seg_col_text:'Transkriptsioon', seg_col_actions:'Toimingud',
+    edit_title:'Redigeeri segmenti', edit_label_text:'Transkriptsioon',
+    edit_label_start:'Algus (sek)', edit_label_end:'Lõpp (sek)',
+    edit_reembed:'Manusta tekst uuesti',
+    indexing_log:'Indekseerimise logi',
+    found_n: n => `Leitud ${n} video${n!==1?'t':''}`,
+    indexing_progress: (i,n) => `Indekseerimine ${i} / ${n}…`,
+    all_processed: n => `${n} töödeldud.`,
+    confirm_del_video:'Kustutada see video ja kõik selle segmendid?',
+    confirm_del_seg:'Kustutada see segment?',
+    btn_reset_index:'Lähtesta indeks', confirm_reset_index:'Kustutada KÕIK indekseeritud videod ja andmed?', reset_index_done:'Indeks lähtestatud.',
+    status_running:'Töötab…', status_done:'Valmis', status_error:'Viga',
+    status_exists:'Olemas', status_indexed:'Indekseeritud',
+    seg_n: n => `${n} segment${n!==1?'i':''}`,
+    err_no_url:'Sisestage vähemalt üks URL.',
+  },
+  lv: {
+    admin_badge:'Admin', nav_search:'Meklēt',
+    login_title:'Administratora piekļuve', login_sub:'Ievadiet administratora paroli.',
+    login_placeholder:'Parole', login_error:'Nepareiza parole.', login_btn:'Atbloķēt',
+    lock_open:'Atvērts', lock_locked:'Bloķēts',
+    library_title:'Video bibliotēka', library_empty:'Vēl nav indeksētu videoklipu.',
+    stat_segments:'Segmenti', stat_videos:'Avoti',
+    add_source:'Pievienot avotu', add_source_sub:'Atbalsta YouTube, LinkedIn, Instagram, TikTok, atskaņošanas sarakstus un tiešās saites.',
+    how_extract_title:'Atskaņošanas sarakstiem un kanāliem',
+    how_extract_body:'Uzrāda visus URL videoklipus. Vēl nekas netiek lejupielādēts.',
+    how_index_title:'Atsevišķiem videoklipiem',
+    how_index_body:'Lejupielādē audio, transkripciju ar Whisper un saglabā indeksā.',
+    how_index_all_title:'Pēc iegūšanas',
+    how_index_all_body:'Indeksē katru atrasto videoklipu ar tiešraides gaitu.',
+    auth_hint_label:'Nepieciešama autentifikācija:',
+    auth_hint_body:' LinkedIn, Instagram un TikTok var pieprasīt pieteikšanos. Iestatiet cookies_from_browser failā config.yaml.',
+    url_placeholder:'https://www.youtube.com/watch?v=…',
+    url_hint:'Viens URL katrā rindā.',
+    btn_extract:'Iegūt', btn_index_now:'Indeksēt tagad', btn_index_all:'Indeksēt visu',
+    btn_clear:'Notīrīt', btn_cancel:'Atcelt', btn_save:'Saglabāt', btn_close:'Aizvērt',
+    seg_editor_title:'Segmentu redaktors',
+    seg_editor_sub:'Rediģējiet transkripcijas tekstu vai laika zīmogus.',
+    seg_col_time:'Laiks', seg_col_text:'Transkripcija', seg_col_actions:'Darbības',
+    edit_title:'Rediģēt segmentu', edit_label_text:'Transkripcija',
+    edit_label_start:'Sākums (sek)', edit_label_end:'Beigas (sek)',
+    edit_reembed:'Atkārtoti iegult tekstu',
+    indexing_log:'Indeksēšanas žurnāls',
+    found_n: n => `Atrasti ${n} videoklipi`,
+    indexing_progress: (i,n) => `Indeksēšana ${i} / ${n}…`,
+    all_processed: n => `${n} apstrādāts.`,
+    confirm_del_video:'Dzēst šo videoklipu un visus tā segmentus?',
+    confirm_del_seg:'Dzēst šo segmentu?',
+    btn_reset_index:'Atiestatīt indeksu', confirm_reset_index:'Dzēst VISUS indeksētos videoklipus un datus?', reset_index_done:'Indekss atiestatīts.',
+    status_running:'Darbojas…', status_done:'Gatavs', status_error:'Kļūda',
+    status_exists:'Pastāv', status_indexed:'Indeksēts',
+    seg_n: n => `${n} segments`,
+    err_no_url:'Lūdzu, ievadiet vismaz vienu URL.',
+  },
+  lt: {
+    admin_badge:'Admin', nav_search:'Ieškoti',
+    login_title:'Administratoriaus prieiga', login_sub:'Įveskite administratoriaus slaptažodį.',
+    login_placeholder:'Slaptažodis', login_error:'Neteisingas slaptažodis.', login_btn:'Atrakinti',
+    lock_open:'Atvira', lock_locked:'Užrakinta',
+    library_title:'Vaizdo įrašų biblioteka', library_empty:'Dar nėra indeksuotų vaizdo įrašų.',
+    stat_segments:'Segmentai', stat_videos:'Šaltiniai',
+    add_source:'Pridėti šaltinį', add_source_sub:'Palaiko YouTube, LinkedIn, Instagram, TikTok, grojaraščius ir tiesioginius nuorodas.',
+    how_extract_title:'Grojaraščiams ir kanalams',
+    how_extract_body:'Išvardija visus URL vaizdo įrašus. Niekas dar neatsisiunčiama.',
+    how_index_title:'Atskiriems vaizdo įrašams',
+    how_index_body:'Atsisiunčia garso įrašą, transkribuoja su Whisper ir išsaugo indekse.',
+    how_index_all_title:'Po ištraukimo',
+    how_index_all_body:'Indeksuoja kiekvieną rastą vaizdo įrašą su tiesioginiu pažanga.',
+    auth_hint_label:'Reikalingas autentifikavimas:',
+    auth_hint_body:' LinkedIn, Instagram ir TikTok gali reikalauti prisijungimo. Nustatykite cookies_from_browser faile config.yaml.',
+    url_placeholder:'https://www.youtube.com/watch?v=…',
+    url_hint:'Vienas URL eilutėje.',
+    btn_extract:'Ištraukti', btn_index_now:'Indeksuoti dabar', btn_index_all:'Indeksuoti viską',
+    btn_clear:'Išvalyti', btn_cancel:'Atšaukti', btn_save:'Išsaugoti', btn_close:'Uždaryti',
+    seg_editor_title:'Segmentų redaktorius',
+    seg_editor_sub:'Redaguokite transkripcijos tekstą arba laiko žymes.',
+    seg_col_time:'Laikas', seg_col_text:'Transkripcija', seg_col_actions:'Veiksmai',
+    edit_title:'Redaguoti segmentą', edit_label_text:'Transkripcija',
+    edit_label_start:'Pradžia (sek)', edit_label_end:'Pabaiga (sek)',
+    edit_reembed:'Iš naujo įterpti tekstą',
+    indexing_log:'Indeksavimo žurnalas',
+    found_n: n => `Rasta ${n} vaizdo įraš${n===1?'as':'ų'}`,
+    indexing_progress: (i,n) => `Indeksuojama ${i} / ${n}…`,
+    all_processed: n => `${n} apdorota.`,
+    confirm_del_video:'Ištrinti šį vaizdo įrašą ir visus jo segmentus?',
+    confirm_del_seg:'Ištrinti šį segmentą?',
+    btn_reset_index:'Iš naujo nustatyti indeksą', confirm_reset_index:'Ištrinti VISUS indeksuotus vaizdo įrašus ir duomenis?', reset_index_done:'Indeksas iš naujo nustatytas.',
+    status_running:'Vykdoma…', status_done:'Atlikta', status_error:'Klaida',
+    status_exists:'Egzistuoja', status_indexed:'Indeksuota',
+    seg_n: n => `${n} segment${n===1?'as':'ų'}`,
+    err_no_url:'Įveskite bent vieną URL.',
+  },
+  mt: {
+    admin_badge:'Admin', nav_search:'Fittex',
+    login_title:'Aċċess tal-amministratur', login_sub:'Daħħal il-password tal-amministratur.',
+    login_placeholder:'Password', login_error:'Password żbaljata.', login_btn:'Iftuħ',
+    lock_open:'Miftuħ', lock_locked:'Magħluq',
+    library_title:'Librerija tal-vidjow', library_empty:'L-ebda vidjow ma ġie indikat s\'issa.',
+    stat_segments:'Segmenti', stat_videos:'Sorsi',
+    add_source:'Żid sors', add_source_sub:'Jappoġġja YouTube, LinkedIn, Instagram, TikTok, listi u links diretti.',
+    how_extract_title:'Għal listi u kanali',
+    how_extract_body:'Jelenka l-vidjows kollha fl-URL. Xejn ma jiġi scaricato għalissa.',
+    how_index_title:'Għal vidjows individwali',
+    how_index_body:'Iscarica l-awdjo, jittraskrivi b\'Whisper u jaħżen fl-indiċi.',
+    how_index_all_title:'Wara l-estrazzjoni',
+    how_index_all_body:'Jindika kull vidjow misjub b\'progress live.',
+    auth_hint_label:'Meħtieġa awtentikazzjoni:',
+    auth_hint_body:' LinkedIn, Instagram u TikTok jistgħu jeħtieġu login. Issettja cookies_from_browser fil-config.yaml.',
+    url_placeholder:'https://www.youtube.com/watch?v=…',
+    url_hint:'URL wieħed kull linja.',
+    btn_extract:'Estrai', btn_index_now:'Indika issa', btn_index_all:'Indika kollox',
+    btn_clear:'Ħassar', btn_cancel:'Ikkanċella', btn_save:'Issejvja', btn_close:'Agħlaq',
+    seg_editor_title:'Editur tas-segmenti',
+    seg_editor_sub:'Editja t-test tat-traskrizzjoni jew il-marki tal-ħin.',
+    seg_col_time:'Ħin', seg_col_text:'Traskrizzjoni', seg_col_actions:'Azzjonijiet',
+    edit_title:'Editja s-segment', edit_label_text:'Traskrizzjoni',
+    edit_label_start:'Bidu (sek)', edit_label_end:'Tmiem (sek)',
+    edit_reembed:'Ere-inkorpori t-test',
+    indexing_log:'Log tal-indiċjar',
+    found_n: n => `Instab${n!==1?'u':''} ${n} vidjow`,
+    indexing_progress: (i,n) => `Qed jindika ${i} / ${n}…`,
+    all_processed: n => `${n} ipproċessati.`,
+    confirm_del_video:'Tħassar dan il-vidjow u s-segmenti kollha tiegħu?',
+    confirm_del_seg:'Tħassar dan is-segment?',
+    btn_reset_index:'Irreġistra mill-ġdid l-indiċi', confirm_reset_index:'Tħassar IL-VIDJOWS U D-DATA KOLLHA?', reset_index_done:'L-indiċi ġie rreġistrat mill-ġdid.',
+    status_running:'Qed isir…', status_done:'Lest', status_error:'Żball',
+    status_exists:'Jeżisti', status_indexed:'Indikat',
+    seg_n: n => `${n} segment${n!==1?'i':''}`,
+    err_no_url:'Daħħal mill-inqas URL wieħed.',
+  },
+  ga: {
+    admin_badge:'Riarachán', nav_search:'Cuardaigh',
+    login_title:'Rochtain riaracháin', login_sub:'Cuir isteach pasfhocal an riarthóra.',
+    login_placeholder:'Pasfhocal', login_error:'Pasfhocal mícheart.', login_btn:'Díghlasáil',
+    lock_open:'Oscailte', lock_locked:'Glasáilte',
+    library_title:'Leabharlann físeán', library_empty:'Níl aon fhíseán innéacsaithe fós.',
+    stat_segments:'Seimintí', stat_videos:'Foinsí',
+    add_source:'Cuir foinse leis', add_source_sub:'Tacaíonn sé le YouTube, LinkedIn, Instagram, TikTok, seinmliosta agus naisc dhíreacha.',
+    how_extract_title:'Do sheinnmliosta agus cainéil',
+    how_extract_body:'Liostaíonn sé gach físeán ag an URL. Ní íoslódáiltear aon rud fós.',
+    how_index_title:'Do fhíseáin aonair',
+    how_index_body:'Íoslódálann fuaim, déanann traschríobh le Whisper agus stórálann san innéacs.',
+    how_index_all_title:'Tar éis eastóscadh',
+    how_index_all_body:'Innéacsaíonn gach físeán a aimsíodh le dul chun cinn beo.',
+    auth_hint_label:'Fíordheimhniú riachtanach:',
+    auth_hint_body:' D\'fhéadfadh LinkedIn, Instagram agus TikTok logáil isteach a éileamh. Socraigh cookies_from_browser in config.yaml.',
+    url_placeholder:'https://www.youtube.com/watch?v=…',
+    url_hint:'URL amháin in aghaidh na líne.',
+    btn_extract:'Eastóscadh', btn_index_now:'Innéacsaigh anois', btn_index_all:'Innéacsaigh uile',
+    btn_clear:'Glan', btn_cancel:'Cealaigh', btn_save:'Sábháil', btn_close:'Dún',
+    seg_editor_title:'Eagarthóir seimintí',
+    seg_editor_sub:'Cuir in eagar téacs traschríofa nó stampaí ama.',
+    seg_col_time:'Am', seg_col_text:'Traschríobh', seg_col_actions:'Gníomhartha',
+    edit_title:'Cuir seimint in eagar', edit_label_text:'Traschríobh',
+    edit_label_start:'Tús (soic)', edit_label_end:'Deireadh (soic)',
+    edit_reembed:'Athleabaigh an téacs',
+    indexing_log:'Loga innéacsaithe',
+    found_n: n => `${n} físeán${n!==1?'a':''} aimsíodh`,
+    indexing_progress: (i,n) => `Innéacsú ${i} / ${n}…`,
+    all_processed: n => `${n} próiseáilte.`,
+    confirm_del_video:'An bhfuil tú cinnte gur mhaith leat an físeán seo agus a chuid seimintí go léir a scriosadh?',
+    confirm_del_seg:'An bhfuil tú cinnte gur mhaith leat an seimint seo a scriosadh?',
+    btn_reset_index:'Athshocraigh innéacs', confirm_reset_index:'Scrios GACH físeán agus sonraí innéacsaithe?', reset_index_done:'Innéacs athshocraithe.',
+    status_running:'Ar siúl…', status_done:'Déanta', status_error:'Earráid',
+    status_exists:'Ann', status_indexed:'Innéacsaithe',
+    seg_n: n => `${n} seimint${n!==1?'í':''}`,
+    err_no_url:'Cuir isteach URL amháin ar a laghad.',
+  },
+};
+
+function detectLang() {
+  const s = localStorage.getItem('seekr-lang');
+  if (s && TRANSLATIONS[s]) return s;
+  const b = (navigator.language || 'en').toLowerCase().split('-')[0];
+  return TRANSLATIONS[b] ? b : 'en';
+}
+
+let LANG = detectLang();
+let T = TRANSLATIONS[LANG];
+
+function t(key, ...args) {
+  const v = T[key] ?? TRANSLATIONS.en[key];
+  return typeof v === 'function' ? v(...args) : (v ?? key);
+}
+
+function applyTranslations() {
+  document.documentElement.lang = LANG;
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const v = T[el.dataset.i18n];
+    if (typeof v === 'string') el.innerHTML = v;
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    const v = T[el.dataset.i18nPlaceholder];
+    if (v) el.placeholder = v;
+  });
+  const sel = document.getElementById('lang-select');
+  if (sel) sel.value = LANG;
+}
+
+function switchLang(lang) {
+  if (!TRANSLATIONS[lang]) return;
+  LANG = lang; T = TRANSLATIONS[LANG];
+  localStorage.setItem('seekr-lang', lang);
+  applyTranslations();
+}
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+
+let isProtected = false;
+
+async function checkAuth() {
+  const res = await fetch('/api/admin/auth-status').catch(() => null);
+  if (!res || !res.ok) { showApp(); return; }
+  const data = await res.json();
+  isProtected = data.protected;
+  if (!isProtected) { showApp(); return; }
+  const probe = await fetch('/api/admin/segments?video_url=__probe__').catch(() => null);
+  if (probe && probe.status !== 401) { showApp(); }
+  else { showLoginGate(); }
+}
+
+function showLoginGate() {
+  document.getElementById('login-gate').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+  setTimeout(() => document.getElementById('login-input').focus(), 100);
+}
+
+function showApp() {
+  document.getElementById('login-gate').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  updateLockBtn();
+  loadStats();
+  loadSettings();
+}
+
+async function submitLogin() {
+  const pw = document.getElementById('login-input').value;
+  const errEl = document.getElementById('login-error');
+  errEl.style.display = 'none';
+  const res = await fetch('/api/admin/login', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({password: pw}),
+  });
+  if (res.ok) { showApp(); }
+  else { errEl.style.display = 'block'; document.getElementById('login-input').select(); }
+}
+
+document.getElementById('login-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') submitLogin();
+});
+
+function updateLockBtn() {
+  const btn   = document.getElementById('lock-btn');
+  const label = document.getElementById('lock-label');
+  const icon  = document.getElementById('lock-icon');
+  if (isProtected) {
+    btn.classList.add('locked');
+    icon.textContent  = '🔒';
+    label.textContent = t('lock_locked');
+  } else {
+    btn.classList.remove('locked');
+    icon.textContent  = '🔓';
+    label.textContent = t('lock_open');
+  }
+}
+
+async function toggleLockInfo() {
+  if (!isProtected) {
+    alert('To enable admin password protection, set admin_password in config.yaml and restart the server.');
+  } else {
+    if (confirm('Log out of the admin panel?')) {
+      await fetch('/api/admin/logout', {method:'POST'});
+      showLoginGate();
+    }
+  }
+}
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function formatTime(s) {
+  s = Math.floor(s);
+  const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sec = s%60;
+  if (h>0) return `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+  return `${m}:${String(sec).padStart(2,'0')}`;
+}
+
+function nowStr() { return new Date().toLocaleTimeString(LANG, {hour12:false}); }
+
+let _logCtx = ''; // prefix injected during playlist indexing, e.g. "[2/10 20%]"
+
+function log(msg, type='i') {
+  const term = document.getElementById('log-terminal');
+  document.getElementById('log-section').style.display = 'block';
+
+  // Detect heartbeat lines (e.g. "[42%] Transcribing… (8s elapsed)")
+  // and replace the previous heartbeat span instead of appending a new line.
+  const isHeartbeat = /elapsed\)/.test(msg);
+  if (isHeartbeat && term.lastChild?.dataset?.heartbeat) {
+    term.removeChild(term.lastChild);
+  }
+
+  const span = document.createElement('span');
+  if (isHeartbeat) span.dataset.heartbeat = '1';
+
+  const time = document.createElement('span');
+  time.className = 'lt'; time.textContent = `[${nowStr()}] `;
+  span.appendChild(time);
+
+  // Split "[N%] rest of message" — render percentage badge in accent colour
+  const pctMatch = msg.match(/^(\[\d+%\])\s*(.*)/s);
+  if (pctMatch) {
+    const pct = document.createElement('span');
+    pct.className = 'lp'; pct.textContent = pctMatch[1] + ' ';
+    const body = document.createElement('span');
+    body.className = `l${type}`; body.textContent = (_logCtx ? _logCtx + ' ' : '') + pctMatch[2] + '\n';
+    span.appendChild(pct); span.appendChild(body);
+  } else {
+    const body = document.createElement('span');
+    body.className = `l${type}`; body.textContent = (_logCtx ? _logCtx + ' ' : '') + msg + '\n';
+    span.appendChild(body);
+  }
+
+  term.appendChild(span);
+  term.scrollTop = term.scrollHeight;
+}
+
+function clearLog() { document.getElementById('log-terminal').innerHTML = ''; }
+
+function getUrls() {
+  return document.getElementById('source-urls').value
+    .split('\n').map(l=>l.trim()).filter(l=>l);
+}
+
+function getDownloadVideo() {
+  return document.querySelector('input[name="src-type"]:checked')?.value === 'video';
+}
+
+// ── Stats & video library ─────────────────────────────────────────────────────
+
+let videoLibrary = [];
+
+async function loadStats() {
+  try {
+    const res = await fetch('/api/status');
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+    document.getElementById('stat-segments').textContent = (data.total_segments||0).toLocaleString(LANG);
+    document.getElementById('stat-videos').textContent   = (data.indexed_videos||0).toLocaleString(LANG);
+    videoLibrary = data.video_list || [];
+    renderVideoLibrary();
+  } catch {}
+}
+
+function renderVideoLibrary() {
+  const list  = document.getElementById('video-list');
+  const count = document.getElementById('sidebar-count');
+  count.textContent = videoLibrary.length;
+  if (videoLibrary.length === 0) {
+    list.innerHTML = `<div class="sidebar-empty">${escHtml(t('library_empty'))}</div>`;
+    return;
+  }
+  list.innerHTML = '';
+  videoLibrary.forEach(v => {
+    const item = document.createElement('div');
+    item.className = 'video-item';
+    item.dataset.url = v.url;
+    const thumbHtml = v.thumbnail
+      ? `<div class="video-thumb"><img src="${escHtml(v.thumbnail)}" alt="" /></div>`
+      : `<div class="video-thumb"><span class="video-thumb-placeholder">▶</span></div>`;
+    item.innerHTML = `
+      ${thumbHtml}
+      <div class="video-item-info">
+        <div class="video-item-title" title="${escHtml(v.url)}">${escHtml(v.title || v.url)}</div>
+        <div class="video-item-meta">${escHtml(t('seg_n', v.segment_count))}</div>
+      </div>
+      <button class="video-item-del" title="${escHtml(t('confirm_del_video'))}" onclick="deleteVideo(event,'${escHtml(v.url)}')">✕</button>`;
+    item.addEventListener('click', e => {
+      if (e.target.closest('.video-item-del')) return;
+      document.querySelectorAll('.video-item').forEach(el => el.classList.remove('active'));
+      item.classList.add('active');
+      loadSegments(v.url, v.title || v.url);
+    });
+    list.appendChild(item);
+  });
+}
+
+async function resetIndex() {
+  if (!confirm(t('confirm_reset_index'))) return;
+  const res = await fetch('/api/admin/reset-index', {method:'POST', credentials:'include'});
+  if (!res.ok) { alert('Reset failed'); return; }
+  log(t('reset_index_done'), 'o');
+  loadStats();
+}
+
+async function cleanupMedia() {
+  if (!confirm('Delete all downloaded audio and video files from disk?\n(The search index is kept — only raw media files are removed.)')) return;
+  const res = await fetch('/api/admin/cleanup-media', {method:'POST', credentials:'include'});
+  if (!res.ok) { alert('Cleanup failed'); return; }
+  const { deleted_files, freed_bytes } = await res.json();
+  const mb = (freed_bytes / 1048576).toFixed(1);
+  log(`🗑 Cleaned up ${deleted_files} file${deleted_files !== 1 ? 's' : ''} (${mb} MB freed)`, 'o');
+}
+
+async function deleteVideo(e, videoUrl) {
+  e.stopPropagation();
+  if (!confirm(t('confirm_del_video'))) return;
+  const res = await fetch('/api/admin/video', {
+    method: 'DELETE',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({video_url: videoUrl}),
+  });
+  if (res.ok) { closeSegmentEditor(); loadStats(); }
+}
+
+// ── Segment editor ────────────────────────────────────────────────────────────
+
+let currentVideoUrl = null;
+let currentSegments = [];
+let editingIdx = null;
+
+async function loadSegments(videoUrl, title) {
+  currentVideoUrl = videoUrl;
+  const res = await fetch(`/api/admin/segments?video_url=${encodeURIComponent(videoUrl)}`);
+  if (!res.ok) return;
+  const data = await res.json();
+  currentSegments = data.segments;
+  document.getElementById('seg-video-title').textContent = title;
+  document.getElementById('seg-count-badge').textContent = t('seg_n', currentSegments.length);
+  renderSegments();
+  document.getElementById('segment-section').style.display = 'block';
+  document.getElementById('segment-section').scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+function renderSegments() {
+  const tbody = document.getElementById('segment-tbody');
+  tbody.innerHTML = '';
+  currentSegments.forEach(seg => {
+    const tr = document.createElement('tr');
+    const editLabel = {fr:'Éditer',es:'Editar',de:'Bearb.',pt:'Editar',it:'Modifica',zh:'编辑',ja:'編集',ar:'تعديل'}[LANG] || 'Edit';
+    tr.innerHTML = `
+      <td><span class="seg-ts">${formatTime(seg.start)} → ${formatTime(seg.end)}</span></td>
+      <td><div class="seg-text">${escHtml(seg.text)}</div></td>
+      <td>
+        <div class="seg-actions">
+          <button class="btn btn-secondary btn-sm" onclick="openEditDialog(${seg.idx})">✏ ${escHtml(editLabel)}</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteSegment(${seg.idx})">✕</button>
+        </div>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+  document.getElementById('seg-count-badge').textContent = t('seg_n', currentSegments.length);
+}
+
+function openEditDialog(idx) {
+  const seg = currentSegments.find(s => s.idx === idx);
+  if (!seg) return;
+  editingIdx = idx;
+  document.getElementById('edit-text').value    = seg.text;
+  document.getElementById('edit-start').value   = seg.start;
+  document.getElementById('edit-end').value     = seg.end;
+  document.getElementById('edit-reembed').checked = false;
+  document.getElementById('edit-dialog').showModal();
+}
+
+async function saveSegment() {
+  if (editingIdx === null) return;
+  const btn = document.getElementById('edit-save-btn');
+  btn.disabled = true;
+  const body = {
+    text:     document.getElementById('edit-text').value,
+    start:    parseFloat(document.getElementById('edit-start').value),
+    end:      parseFloat(document.getElementById('edit-end').value),
+    re_embed: document.getElementById('edit-reembed').checked,
+  };
+  const res = await fetch(`/api/admin/segment/${editingIdx}`, {
+    method: 'PUT',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(body),
+  });
+  btn.disabled = false;
+  if (res.ok) {
+    document.getElementById('edit-dialog').close();
+    await loadSegments(currentVideoUrl, document.getElementById('seg-video-title').textContent);
+  }
+}
+
+async function deleteSegment(idx) {
+  if (!confirm(t('confirm_del_seg'))) return;
+  const res = await fetch(`/api/admin/segment/${idx}`, {method:'DELETE'});
+  if (res.ok) { await loadSegments(currentVideoUrl, document.getElementById('seg-video-title').textContent); loadStats(); }
+}
+
+function closeSegmentEditor() {
+  document.getElementById('segment-section').style.display = 'none';
+  document.querySelectorAll('.video-item').forEach(el => el.classList.remove('active'));
+  currentVideoUrl = null;
+}
+
+// ── Extract & index ───────────────────────────────────────────────────────────
+
+let extractedVideos = []; // [{url, title, thumbnail, duration}]
+
+function fmtDuration(secs) {
+  if (!secs) return '';
+  const s = Math.floor(secs);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sc = s % 60;
+  if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(sc).padStart(2,'0')}`;
+  return `${m}:${String(sc).padStart(2,'0')}`;
+}
+
+async function extractVideos() {
+  const urls = getUrls();
+  if (!urls.length) { alert(t('err_no_url')); return; }
+  const btn = document.getElementById('extract-btn');
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spinner"></span> ${escHtml(t('btn_extract'))}…`;
+  log(`Extracting: ${urls[0]}`);
+  try {
+    const res = await fetch('/api/admin/extract', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({url: urls[0]}),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    extractedVideos = data.videos || data.urls.map(u => ({url:u, title:u, thumbnail:'', duration:0}));
+    log(t('found_n', extractedVideos.length), 'o');
+    renderExtracted(extractedVideos);
+  } catch(e) {
+    log(`Extract failed: ${e.message}`, 'e');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> ${escHtml(t('btn_extract'))}`;
+  }
+}
+
+function renderExtracted(videos) {
+  const sec  = document.getElementById('extracted-section');
+  const lbl  = document.getElementById('extracted-label');
+  const list = document.getElementById('url-list');
+  lbl.textContent = t('found_n', videos.length);
+  list.innerHTML = '';
+  videos.forEach((v, i) => {
+    const dur = fmtDuration(v.duration);
+    const thumbHtml = v.thumbnail
+      ? `<img class="url-item-thumb" src="${escHtml(v.thumbnail)}" alt="" loading="lazy" onerror="this.style.display='none'">`
+      : `<div class="url-item-thumb-placeholder"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="20" height="20" rx="3"/><polygon points="10 8 16 12 10 16 10 8"/></svg></div>`;
+    const item = document.createElement('div');
+    item.className = 'url-item';
+    item.id = `url-item-${i}`;
+    item.innerHTML = `
+      ${thumbHtml}
+      <div class="url-item-info">
+        <div class="url-item-title" title="${escHtml(v.title)}">${escHtml(v.title)}</div>
+        <div class="url-item-meta">${dur ? escHtml(dur) + ' · ' : ''}${escHtml(v.url)}</div>
+      </div>
+      <span class="url-item-status" id="url-status-${i}"></span>
+      <button class="btn btn-secondary btn-sm" id="url-btn-${i}" onclick="indexSingleUrl('${escHtml(v.url)}',${i},getDownloadVideo())">${escHtml(t('btn_index_now').split(' ').pop())}</button>`;
+    list.appendChild(item);
+  });
+  sec.style.display = 'block';
+}
+
+async function indexSingleUrl(url, itemIndex, downloadVideo = false) {
+  const btn      = itemIndex !== undefined ? document.getElementById(`url-btn-${itemIndex}`) : null;
+  const statusEl = itemIndex !== undefined ? document.getElementById(`url-status-${itemIndex}`) : null;
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'; }
+  if (statusEl) { statusEl.className = 'url-item-status running'; statusEl.textContent = t('status_running'); }
+  log(`Indexing: ${url}`);
+  try {
+    const res = await fetch('/api/admin/index-url', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({url, download_video: downloadVideo}),
+    });
+    if (!res.ok) { const e = await res.json().catch(()=>{}); throw new Error(e?.detail||`HTTP ${res.status}`); }
+    const reader  = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '', done = false;
+    while (!done) {
+      const {value, done: sd} = await reader.read();
+      done = sd;
+      if (value) {
+        buf += decoder.decode(value, {stream:true});
+        const lines = buf.split('\n'); buf = lines.pop();
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const msg = line.slice(6).trim();
+          if (!msg || msg === '__DONE__') { if (msg === '__DONE__') done = true; break; }
+          const isOk      = msg.toLowerCase().includes('done') || msg.toLowerCase().includes('chunks indexed');
+          const isErr     = msg.toLowerCase().includes('error') || msg.toLowerCase().includes('failed');
+          const isAlready = msg.toLowerCase().includes('already indexed');
+          log(msg, isOk?'o':isErr?'e':isAlready?'w':'i');
+          if (statusEl) {
+            if (isOk)      { statusEl.className='url-item-status done';    statusEl.textContent=t('status_done'); }
+            else if (isErr){ statusEl.className='url-item-status error';   statusEl.textContent=t('status_error'); }
+            else if (isAlready){ statusEl.className='url-item-status done'; statusEl.textContent=t('status_exists'); }
+          }
+        }
+      }
+    }
+    if (statusEl && !statusEl.textContent) { statusEl.className='url-item-status done'; statusEl.textContent=t('status_done'); }
+  } catch(e) {
+    log(`Error: ${e.message}`, 'e');
+    if (statusEl) { statusEl.className='url-item-status error'; statusEl.textContent=t('status_error'); }
+  } finally {
+    if (btn) { btn.disabled=true; btn.textContent=t('status_indexed'); }
+    loadStats();
+  }
+}
+
+async function indexDirectUrls() {
+  const urls = getUrls();
+  if (!urls.length) { alert(t('err_no_url')); return; }
+  const btn = document.getElementById('index-direct-btn');
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spinner"></span> ${escHtml(t('btn_index_now'))}…`;
+  await Promise.all(urls.map(url => indexSingleUrl(url, undefined, getDownloadVideo())));
+  btn.disabled = false;
+  btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg> ${escHtml(t('btn_index_now'))}`;
+}
+
+async function indexAll() {
+  if (!extractedVideos.length) return;
+  const btn      = document.getElementById('index-all-btn');
+  const statusEl = document.getElementById('index-all-status');
+  btn.disabled = true;
+  const total = extractedVideos.length;
+
+  for (let i = 0; i < total; i++) {
+    const pct = Math.round((i / total) * 100);
+    _logCtx = `[${i + 1}/${total} ${pct}%]`;
+    statusEl.textContent = t('indexing_progress', i + 1, total);
+    await indexSingleUrl(extractedVideos[i].url, i, getDownloadVideo());
+  }
+
+  _logCtx = '';
+  statusEl.textContent = t('all_processed', total);
+  btn.disabled = false;
+  loadStats();
+}
+
+// ── Source tab switcher ───────────────────────────────────────────────────────
+
+function switchTab(tab) {
+  document.getElementById('panel-url').style.display  = tab === 'url'  ? '' : 'none';
+  document.getElementById('panel-file').style.display = tab === 'file' ? '' : 'none';
+  document.getElementById('tab-url').classList.toggle('active',  tab === 'url');
+  document.getElementById('tab-file').classList.toggle('active', tab === 'file');
+}
+
+// ── File upload ───────────────────────────────────────────────────────────────
+
+const DROP_ZONE_DEFAULT = `
+  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin:0 auto;display:block">
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+    <polyline points="17 8 12 3 7 8"/>
+    <line x1="12" y1="3" x2="12" y2="15"/>
+  </svg>
+  <div style="font-size:13px;font-weight:600;margin-top:10px;">Drop file here or click to browse</div>
+  <div style="font-size:11px;color:var(--muted);margin-top:4px;">PDF &middot; MP3 &middot; WAV &middot; M4A &middot; OGG &middot; FLAC</div>`;
+
+function handleFileDrop(event) {
+  event.preventDefault();
+  document.getElementById('drop-zone').classList.remove('drag-over');
+  const files = [...event.dataTransfer.files];
+  if (files.length) indexUploadedFiles(files);
+}
+
+function handleFileSelect(input) {
+  const files = [...input.files];
+  input.value = '';
+  if (files.length) indexUploadedFiles(files);
+}
+
+async function indexUploadedFiles(files) {
+  const dz = document.getElementById('drop-zone');
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    const label = files.length > 1 ? `[${i+1}/${files.length}] ${escHtml(file.name)}` : escHtml(file.name);
+    dz.innerHTML = `<span class="spinner"></span> <span style="font-size:13px;font-weight:600">Indexing <em>${label}</em>…</span>`;
+    log(`Uploading: ${file.name}`);
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const res = await fetch('/api/admin/index-file', { method: 'POST', body: formData });
+      if (!res.ok) { const e = await res.json().catch(()=>{}); throw new Error(e?.detail || `HTTP ${res.status}`); }
+      const reader  = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = '', done = false;
+      while (!done) {
+        const {value, done: sd} = await reader.read();
+        done = sd;
+        if (value) {
+          buf += decoder.decode(value, {stream: true});
+          const lines = buf.split('\n'); buf = lines.pop();
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            const msg = line.slice(6).trim();
+            if (!msg || msg === '__DONE__') { if (msg === '__DONE__') done = true; break; }
+            const isOk  = msg.toLowerCase().includes('done') || msg.toLowerCase().includes('chunks indexed');
+            const isErr = msg.toLowerCase().includes('error') || msg.toLowerCase().includes('failed');
+            log(msg, isOk ? 'o' : isErr ? 'e' : 'i');
+          }
+        }
+      }
+    } catch(e) {
+      log(`Error: ${e.message}`, 'e');
+    }
+  }
+  loadStats();
+  dz.innerHTML = DROP_ZONE_DEFAULT;
+}
+
+// Auth hint + force-video note for social platforms
+const SOCIAL = ['linkedin.com','instagram.com','tiktok.com'];
+document.getElementById('source-urls').addEventListener('input', function() {
+  const v = this.value.toLowerCase();
+  const isSocial = SOCIAL.some(d => v.includes(d));
+  document.getElementById('auth-hint').style.display = isSocial ? 'block' : 'none';
+  // Social platforms always download full video — disable the audio toggle
+  document.getElementById('type-audio').disabled = isSocial;
+  document.getElementById('type-video').disabled = isSocial;
+  document.getElementById('src-type-social-note').style.display = isSocial ? 'inline' : 'none';
+  if (isSocial) document.getElementById('type-video').checked = true;
+  else document.getElementById('type-audio').checked = true;
+});
+
+// ── Settings ──────────────────────────────────────────────────────────────────
+
+async function loadSettings() {
+  try {
+    const res = await fetch('/api/admin/settings', { credentials: 'include' });
+    if (!res.ok) return;
+    const s = await res.json();
+    document.getElementById('s-chat-model').value         = s.chat_model || '';
+    document.getElementById('s-embedding-provider').value = s.embedding_provider || 'local';
+    document.getElementById('s-local-model').value        = s.local_embedding_model || '';
+    document.getElementById('s-whisper-model').value      = s.whisper_model || 'base';
+    document.getElementById('s-top-k').value              = s.top_k ?? 3;
+    document.getElementById('s-chunk-duration').value     = s.chunk_duration ?? 120;
+    document.getElementById('s-openai-key').placeholder   = s.openai_api_key ? s.openai_api_key + ' (saved)' : 'sk-… (leave blank to keep current)';
+    document.getElementById('s-gemini-key').placeholder   = s.gemini_api_key ? s.gemini_api_key + ' (saved)' : 'leave blank to keep current';
+    document.getElementById('s-cookies-browser').value    = s.cookies_from_browser || '';
+    document.getElementById('s-vocabulary').value          = (s.vocabulary || []).join('\n');
+    toggleLocalModelRow();
+  } catch (_) {}
+}
+
+function toggleLocalModelRow() {
+  const prov = document.getElementById('s-embedding-provider').value;
+  document.getElementById('s-local-model-row').style.display = prov === 'local' ? '' : 'none';
+}
+
+document.getElementById('s-embedding-provider').addEventListener('change', toggleLocalModelRow);
+
+async function saveSettings() {
+  const btn = document.getElementById('settings-save-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Saving…';
+
+  const body = {
+    chat_model:            document.getElementById('s-chat-model').value.trim(),
+    embedding_provider:    document.getElementById('s-embedding-provider').value,
+    local_embedding_model: document.getElementById('s-local-model').value.trim(),
+    whisper_model:         document.getElementById('s-whisper-model').value,
+    top_k:                 parseInt(document.getElementById('s-top-k').value, 10),
+    chunk_duration:        parseFloat(document.getElementById('s-chunk-duration').value),
+    cookies_from_browser:  document.getElementById('s-cookies-browser').value.trim(),
+    vocabulary:            document.getElementById('s-vocabulary').value,
+  };
+  const openaiKey  = document.getElementById('s-openai-key').value.trim();
+  const geminiKey  = document.getElementById('s-gemini-key').value.trim();
+  if (openaiKey)  body.openai_api_key = openaiKey;
+  if (geminiKey)  body.gemini_api_key = geminiKey;
+
+  try {
+    const res = await fetch('/api/admin/settings', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+
+    // Clear key fields after save
+    document.getElementById('s-openai-key').value = '';
+    document.getElementById('s-gemini-key').value = '';
+
+    const notice = document.getElementById('settings-restart-notice');
+    if (data.needs_restart) {
+      notice.classList.add('visible');
+    } else {
+      notice.classList.remove('visible');
+    }
+    log(`✅ Settings saved.${data.needs_restart ? ' Restart the server to apply all changes.' : ''}`, 'o');
+    loadStats(); // refresh model badges in status
+  } catch (e) {
+    log(`❌ Failed to save settings: ${e.message}`, 'e');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Save settings';
+  }
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+
+applyTranslations();
+updateThemeIcon();
+checkAuth();
+</script>
+</body>
+</html>

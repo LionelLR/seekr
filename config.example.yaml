@@ -1,0 +1,50 @@
+# Seekr configuration — copy this file to config.yaml and fill in your values.
+# API keys can also be set via environment variables (they take precedence).
+
+# ── Embedding ─────────────────────────────────────────────────────────────────
+# Options: local | openai | gemini
+# "local" runs entirely on your CPU — no API key needed (recommended to start).
+embedding_provider: local
+local_embedding_model: all-MiniLM-L6-v2   # any sentence-transformers model
+
+# ── AI chat answers (RAG) — optional ─────────────────────────────────────────
+# Leave empty to use plain vector search only.
+# OpenAI examples: gpt-4o-mini  gpt-4o
+# Gemini examples: gemini-2.0-flash  gemini-1.5-pro
+chat_model: ''
+
+# ── Transcription ─────────────────────────────────────────────────────────────
+# Options: tiny | base | small | medium | large
+# Larger = better accuracy, slower. "base" is a good default.
+whisper_model: base
+
+# Custom vocabulary hints (proper names, brands, technical terms).
+# Whisper will bias toward these tokens during transcription.
+vocabulary: []
+# vocabulary:
+#   - Anthropic
+#   - Claude
+
+# ── Indexing ──────────────────────────────────────────────────────────────────
+chunk_duration: 120.0      # seconds per indexed chunk (max target)
+min_chunk_duration: 10.0   # minimum before splitting at a question boundary
+top_k: 3                   # default number of search results
+
+# ── Storage ───────────────────────────────────────────────────────────────────
+data_dir: ./data   # FAISS index, metadata, downloaded media
+
+# ── Social platform authentication ───────────────────────────────────────────
+# Required for LinkedIn, Instagram, and private TikTok content.
+# Seekr reads cookies from your active browser session via yt-dlp.
+# Options: chrome | firefox | chromium | safari | edge | brave | opera
+cookies_from_browser: ''
+
+# ── Admin panel password ──────────────────────────────────────────────────────
+# Leave empty to disable authentication (fine for local use).
+admin_password: ''
+
+# ── API keys ──────────────────────────────────────────────────────────────────
+# Prefer environment variables: export OPENAI_API_KEY=sk-...
+# These fields are overridden by env vars if both are set.
+openai_api_key: ''
+# gemini_api_key: ''
